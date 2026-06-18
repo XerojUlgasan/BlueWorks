@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { Bell, Home, Briefcase, Calendar, MessageCircle, User, DollarSign, LogOut, Wrench, Users, BarChart2, Settings, AlertTriangle, Bot } from "lucide-react";
 import { Logo, DarkToggle } from "./index";
@@ -12,9 +13,36 @@ const CUSTOMER_LINKS = [
   { label: "BlueBot",      path: "/app/bluebot",   icon: <Bot className="w-5 h-5" /> },
 ];
 
+const NOTIFICATIONS = [
+  { id: 1, text: "Juan dela Cruz confirmed your booking for tomorrow.", time: "5 min ago",  read: false },
+  { id: 2, text: "Your booking for Leaking Sink Repair is complete.",   time: "2 hrs ago",  read: false },
+  { id: 3, text: "Maria Santos sent you a message.",                    time: "Yesterday", read: true  },
+];
+
+function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () => void) {
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ref, onClose]);
+}
+
 export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen]     = useState(false);
+
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef   = useRef<HTMLDivElement>(null);
+
+  useClickOutside(profileRef, () => setProfileOpen(false));
+  useClickOutside(notifRef,   () => setNotifOpen(false));
+
+  const unreadCount = NOTIFICATIONS.filter((n) => !n.read).length;
 
   return (
     <>
@@ -42,16 +70,86 @@ export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: (
 
         <div className="flex items-center gap-1.5 ml-auto">
           <DarkToggle dark={dark} toggleDark={toggleDark} />
-          <button className="relative p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-          </button>
-          <button
-            className="w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold"
-            style={{ background: A }}
-          >
-            AR
-          </button>
+
+          {/* Notifications */}
+          <div ref={notifRef} className="relative">
+            <button
+              onClick={() => { setNotifOpen((o) => !o); setProfileOpen(false); }}
+              className="relative p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              )}
+            </button>
+
+            {notifOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <p className="font-semibold text-sm">Notifications</p>
+                  {unreadCount > 0 && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: A }}>
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
+                <div className="divide-y divide-border">
+                  {NOTIFICATIONS.map((n) => (
+                    <div key={n.id} className={`px-4 py-3 flex items-start gap-3 ${n.read ? "" : "bg-blue-50 dark:bg-blue-900/10"}`}>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: A }}>
+                        <Bell className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs leading-snug">{n.text}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{n.time}</p>
+                      </div>
+                      {!n.read && <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ background: A }} />}
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-2.5 border-t border-border">
+                  <button className="text-xs font-semibold w-full text-center" style={{ color: A }}>Mark all as read</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Profile */}
+          <div ref={profileRef} className="relative">
+            <button
+              onClick={() => { setProfileOpen((o) => !o); setNotifOpen(false); }}
+              className="w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold hover:opacity-90 transition-opacity"
+              style={{ background: A }}
+            >
+              AR
+            </button>
+
+            {profileOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                <div className="px-4 py-4 flex items-center gap-3 border-b border-border">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: A }}>AR</div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">Ana Reyes</p>
+                    <p className="text-xs text-muted-foreground">Customer</p>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <button
+                    onClick={() => { setProfileOpen(false); navigate("/app/home"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors text-left"
+                  >
+                    <User className="w-4 h-4 text-muted-foreground" /> My Profile
+                  </button>
+                  <button
+                    onClick={() => { setProfileOpen(false); navigate("/"); }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4" /> Log out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
