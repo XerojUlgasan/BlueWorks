@@ -35,7 +35,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         style={{ background: "linear-gradient(135deg, #0F172A 0%, #1B3A6B 100%)" }}
       />
 
-      <CustomerNav dark={dark} toggleDark={toggleDark} />
+      <CustomerNav dark={dark} toggleDark={toggleDark} transparent />
 
       <div className="flex overflow-hidden" style={{ height: contentHeight }}>
 
@@ -107,7 +107,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
 
           {/* Toggle buttons row */}
-          <div className="shrink-0 px-3 py-2 flex items-center border-b border-border/40">
+          <div className="shrink-0 px-3 pt-[61px] pb-2 flex items-center">
             <button
               className="md:hidden p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               onClick={() => setMobileSidebarOpen(true)}
