@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, Bot, Sparkles, Plus, Trash2, ArrowLeft, PanelLeftClose, PanelLeft } from "lucide-react";
+import { ArrowRight, Bot, Sparkles, Plus, Trash2, ArrowLeft, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
+import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A, BLUEBOT_HISTORY } from "../../constants";
 
@@ -55,25 +56,47 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
             ${desktopSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full md:hidden"}
           `}
         >
-          <div className="p-3 border-b border-border flex items-center gap-2 shrink-0">
+          {/* Mobile-only top bar: Logo + close */}
+          <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+            <Logo />
             <button
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-              style={{ background: A }}
-              onClick={() => { setQuery(""); setActiveHistory(null); setMobileSidebarOpen(false); }}
-            >
-              <Plus className="w-4 h-4" /> New Chat
-            </button>
-            <button
-              className="md:hidden p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+              className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
               onClick={() => setMobileSidebarOpen(false)}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
+          </div>
+
+          {/* Desktop-only top bar: Logo + New Chat + collapse */}
+          <div className="hidden md:flex flex-col border-b border-border shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <Logo />
+              <button
+                className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+                onClick={() => setDesktopSidebarOpen(false)}
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3">
+              <button
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                style={{ background: A }}
+                onClick={() => { setQuery(""); setActiveHistory(null); }}
+              >
+                <Plus className="w-4 h-4" /> New Chat
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile: New Chat below the logo bar */}
+          <div className="md:hidden p-3 border-b border-border shrink-0">
             <button
-              className="hidden md:flex p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
-              onClick={() => setDesktopSidebarOpen(false)}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              style={{ background: A }}
+              onClick={() => { setQuery(""); setActiveHistory(null); setMobileSidebarOpen(false); }}
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <Plus className="w-4 h-4" /> New Chat
             </button>
           </div>
 
@@ -100,6 +123,28 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 </span>
               </button>
             ))}
+          </div>
+
+          {/* User footer */}
+          <div className="shrink-0 border-t border-border p-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                style={{ background: A }}
+              >
+                AR
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold truncate">Ana Reyes</p>
+                <p className="text-xs text-muted-foreground truncate">ana.reyes@email.com</p>
+              </div>
+              <button
+                onClick={() => navigate("/")}
+                className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </aside>
 
