@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Bot, Plus, Send, Star, ArrowRight, Trash2, ArrowLeft, History, Image, Camera, X } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
-import { A } from "../../constants";
+import { A, BLUEBOT_HISTORY } from "../../constants";
 
 type MsgFrom = "bot" | "user";
 
@@ -13,12 +13,6 @@ interface ChatMessage {
   time: string;
   extra?: React.ReactNode;
 }
-
-const HISTORY = [
-  { label: "Leaking sink repair",      ago: "2 days ago"  },
-  { label: "Electrician for rewiring", ago: "1 week ago"  },
-  { label: "Aircon cleaning",          ago: "2 weeks ago" },
-];
 
 const SUGGESTED_WORKERS = [
   { name: "Maria Santos", rating: 4.7, dist: "1.2 km" },
@@ -65,8 +59,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [activeHistory, setActiveHistory] = useState(0);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [activeHistory, setActiveHistory] = useState(0);  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -140,7 +133,7 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
           <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Recent Chats</p>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {HISTORY.map((h, i) => (
+            {BLUEBOT_HISTORY.map((h, i) => (
               <button
                 key={i}
                 onClick={() => { setActiveHistory(i); setMobileSidebarOpen(false); }}
