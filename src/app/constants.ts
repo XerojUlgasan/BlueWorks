@@ -1,6 +1,12 @@
 export const P = "#1B3A6B"; // primary blue
 export const A = "#3B82F6"; // accent sky blue
 
+export const BLUEBOT_HISTORY = [
+  { label: "Leaking sink repair",      ago: "2 days ago"  },
+  { label: "Electrician for rewiring", ago: "1 week ago"  },
+  { label: "Aircon cleaning",          ago: "2 weeks ago" },
+];
+
 export const BARANGAYS = [
   "Fairview", "Novaliches", "Batasan Hills", "Lagro", "Commonwealth",
   "Bagong Silangan", "Holy Spirit", "Payatas", "Matandang Balara", "Tandang Sora",

@@ -29,7 +29,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose]);
 }
 
-export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
+export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: boolean; toggleDark: () => void; transparent?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -44,10 +44,17 @@ export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: (
 
   const unreadCount = NOTIFICATIONS.filter((n) => !n.read).length;
 
+  // Only go fully transparent (white text) when dark mode is on — light mode still needs readable dark text
+  const isTransparent = transparent && dark;
+
   return (
     <>
       {/* Top bar */}
-      <nav className="sticky top-0 z-50 bg-card border-b border-border px-4 md:px-6 py-3 flex items-center gap-4">
+      <nav className={`${
+        transparent
+          ? "absolute top-0 left-0 right-0 z-50"
+          : "sticky top-0 z-50 bg-card border-b border-border"
+      } px-4 md:px-6 py-3 flex items-center gap-4`}>
         <button onClick={() => navigate("/")}><Logo /></button>
 
         {/* Desktop links */}
@@ -59,7 +66,9 @@ export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: (
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 location.pathname === path
                   ? "text-white"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  : isTransparent
+                    ? "text-white/70 hover:text-white hover:bg-white/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               style={location.pathname === path ? { backgroundColor: A } : {}}
             >
@@ -69,13 +78,17 @@ export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: (
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
-          <DarkToggle dark={dark} toggleDark={toggleDark} />
+          <DarkToggle dark={dark} toggleDark={toggleDark} light={isTransparent} />
 
           {/* Notifications */}
           <div ref={notifRef} className="relative">
             <button
               onClick={() => { setNotifOpen((o) => !o); setProfileOpen(false); }}
-              className="relative p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+              className={`relative p-2 rounded-lg transition-colors ${
+                isTransparent
+                  ? "text-white/70 hover:text-white hover:bg-white/10"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
