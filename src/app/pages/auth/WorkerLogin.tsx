@@ -18,6 +18,7 @@ export default function WorkerLogin() {
     const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) { setError(err.message); return; }
+    console.log("JWT token:", data.session?.access_token);
     const role = data.user?.user_metadata?.role;
     if (role === "customer") { navigate("/app/home"); }
     else { navigate("/worker/dashboard"); }
