@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, Bot, Sparkles, Plus, Trash2, ArrowLeft, History, PanelLeftClose, PanelLeft } from "lucide-react";
+import { ArrowRight, Bot, Sparkles, Plus, Trash2, ArrowLeft, PanelLeftClose, PanelLeft } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A, BLUEBOT_HISTORY } from "../../constants";
 
@@ -35,7 +35,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         style={{ background: "linear-gradient(135deg, #0F172A 0%, #1B3A6B 100%)" }}
       />
 
-      <CustomerNav dark={dark} toggleDark={toggleDark} transparent />
+      <CustomerNav dark={dark} toggleDark={toggleDark} />
 
       <div className="flex overflow-hidden" style={{ height: contentHeight }}>
 
@@ -112,7 +112,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               className="md:hidden p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               onClick={() => setMobileSidebarOpen(true)}
             >
-              <History className="w-5 h-5" />
+              <PanelLeft className="w-5 h-5" />
             </button>
             {!desktopSidebarOpen && (
               <button
