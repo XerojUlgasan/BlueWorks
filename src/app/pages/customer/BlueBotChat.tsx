@@ -4,10 +4,10 @@ import { Bot, Plus, Send, Star, ArrowRight, Trash2, ArrowLeft, History, Image, C
 import { CustomerNav } from "../../components/shared/Nav";
 import { A } from "../../constants";
 
-type MsgType = "bot" | "user";
+type MsgFrom = "bot" | "user";
 
 interface ChatMessage {
-  from: MsgType;
+  from: MsgFrom;
   text?: string;
   image?: string;
   time: string;
@@ -30,8 +30,41 @@ function now() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+const INITIAL_MESSAGES: ChatMessage[] = [
+  { from: "bot",  text: "Hi Ana! 👋 What service do you need today? Describe your problem and I'll find the right worker for you.", time: "10:00 AM" },
+  { from: "user", text: "My sink is leaking under the kitchen cabinet.", time: "10:01 AM" },
+  { from: "bot",  text: "Got it! Sounds like a pipe or drain leak — you need a plumber. Let me find the best ones near you 🔧", time: "10:01 AM" },
+  {
+    from: "bot",
+    text: "Here are the top plumbers near you:",
+    time: "10:02 AM",
+    extra: (
+      <div className="flex gap-2 flex-wrap mt-3">
+        {SUGGESTED_WORKERS.map((w) => (
+          <div key={w.name} className="bg-muted rounded-xl border border-border p-3 w-32 md:w-36">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold mb-2" style={{ background: A }}>
+              {w.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </div>
+            <p className="text-xs font-bold leading-tight">{w.name}</p>
+            <p className="text-xs text-muted-foreground">Plumber</p>
+            <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="font-medium text-foreground">{w.rating}</span>
+              <span>· {w.dist}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  { from: "bot",  text: "Would you like me to check availability and book one for you?", time: "10:02 AM" },
+  { from: "user", text: "Yes, book Maria Santos for tomorrow morning.", time: "10:03 AM" },
+  { from: "bot",  text: "Maria Santos is available tomorrow morning! Taking you to confirm the booking now. 📅", time: "10:03 AM" },
+];
+
 export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [activeHistory, setActiveHistory] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -41,42 +74,6 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { from: "bot", text: "Hi Ana! 👋 What service do you need today? Describe your problem and I'll find the right worker for you.", time: "10:00 AM" },
-    { from: "user", text: "My sink is leaking under the kitchen cabinet.", time: "10:01 AM" },
-    { from: "bot", text: "Got it! Sounds like a pipe or drain leak — you need a plumber. Let me find the best ones near you 🔧", time: "10:01 AM" },
-    {
-      from: "bot",
-      text: "Here are the top plumbers near you:",
-      time: "10:02 AM",
-      extra: (
-        <div className="flex gap-2 flex-wrap mt-3">
-          {SUGGESTED_WORKERS.map((w) => (
-            <div key={w.name} className="bg-background rounded-xl border border-border p-3 w-36 shadow-sm">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold mb-2" style={{ background: A }}>
-                {w.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-              </div>
-              <p className="text-xs font-bold leading-tight">{w.name}</p>
-              <p className="text-xs text-muted-foreground">Plumber</p>
-              <div className="flex items-center gap-1 text-xs mt-1.5 text-muted-foreground">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                <span className="font-medium text-foreground">{w.rating}</span>
-                <span>· {w.dist}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    { from: "bot", text: "Would you like me to check availability and book one for you?", time: "10:02 AM" },
-    { from: "user", text: "Yes, book Maria Santos for tomorrow morning.", time: "10:03 AM" },
-    {
-      from: "bot",
-      text: "Maria Santos is available tomorrow morning! Taking you to confirm the booking now. 📅",
-      time: "10:03 AM",
-    },
-  ]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -85,18 +82,12 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
     const hasText = input.trim();
     if (!hasText && !imagePreview) return;
 
-    const userMsg: ChatMessage = {
-      from: "user",
-      text: hasText || undefined,
-      image: imagePreview || undefined,
-      time: now(),
-    };
-
+    const userMsg: ChatMessage = { from: "user", text: hasText || undefined, image: imagePreview || undefined, time: now() };
     const botReply: ChatMessage = {
       from: "bot",
       text: imagePreview
         ? "I can see the photo! Let me assess the issue and find the right worker for you 🔍"
-        : "I'm looking into that for you. Give me a moment to find the best workers nearby! 🔧",
+        : "I'm on it! Give me a moment to find the best workers nearby 🔧",
       time: now(),
     };
 
@@ -111,14 +102,17 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
     reader.readAsDataURL(file);
   }
 
+  const chatHeight = "calc(100dvh - 57px)";
+
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="bg-background flex flex-col" style={{ height: "100dvh" }}>
       <CustomerNav dark={dark} toggleDark={toggleDark} />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex overflow-hidden" style={{ height: chatHeight }}>
+
         {/* Mobile overlay */}
         {mobileSidebarOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/40 z-40" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileSidebarOpen(false)} />
         )}
 
         {/* Sidebar */}
@@ -134,11 +128,11 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
             <button
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
               style={{ background: A }}
-              onClick={() => setMessages([{ from: "bot", text: "Hi! 👋 What service do you need today?", time: now() }])}
+              onClick={() => { setMessages([{ from: "bot", text: "Hi! 👋 What service do you need today?", time: now() }]); setMobileSidebarOpen(false); }}
             >
               <Plus className="w-4 h-4" /> New Chat
             </button>
-            <button className="md:hidden p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors" onClick={() => setMobileSidebarOpen(false)}>
+            <button className="md:hidden p-2 rounded-xl text-muted-foreground hover:bg-muted" onClick={() => setMobileSidebarOpen(false)}>
               <ArrowLeft className="w-4 h-4" />
             </button>
           </div>
@@ -156,7 +150,7 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
                   <p className={`text-sm font-medium truncate ${i === activeHistory ? "text-blue-600 dark:text-blue-400" : ""}`}>{h.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{h.ago}</p>
                 </div>
-                <span className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-500 transition-all shrink-0">
+                <span className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-500 transition-all">
                   <Trash2 className="w-3 h-3" />
                 </span>
               </button>
@@ -165,9 +159,10 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
         </aside>
 
         {/* Chat area */}
-        <div className="flex-1 flex flex-col min-w-0 min-h-0">
-          {/* Header — anchored */}
-          <div className="px-4 py-3 border-b border-border flex items-center gap-3 bg-card shrink-0">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+
+          {/* Header — sticky, never scrolls */}
+          <div className="sticky top-0 z-20 px-4 py-3 border-b border-border flex items-center gap-3 bg-card shrink-0">
             <button className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" onClick={() => setMobileSidebarOpen(true)}>
               <History className="w-5 h-5" />
             </button>
@@ -183,8 +178,8 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
             </div>
           </div>
 
-          {/* Messages — scrollable middle */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+          {/* Messages — only this scrolls */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-32 md:pb-4">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "gap-3 items-end"}`}>
                 {m.from === "bot" && (
@@ -192,11 +187,9 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                 )}
-                <div className={`${m.from === "user" ? "max-w-[75%] md:max-w-md" : "max-w-[80%] md:max-w-lg"} space-y-1`}>
-                  {m.image && (
-                    <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-48 object-cover border border-border" />
-                  )}
-                  {m.text && (
+                <div className={`${m.from === "user" ? "max-w-[75%] md:max-w-md" : "max-w-[82%] md:max-w-lg"} space-y-1`}>
+                  {m.image && <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-48 object-cover border border-border" />}
+                  {(m.text || m.extra) && (
                     <div
                       className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.from === "user" ? "text-white rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}
                       style={m.from === "user" ? { background: A } : {}}
@@ -205,20 +198,13 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
                       {m.extra}
                     </div>
                   )}
-                  {!m.text && m.from === "bot" && m.extra && (
-                    <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                      {m.extra}
-                    </div>
-                  )}
                   <p className={`text-xs text-muted-foreground ${m.from === "user" ? "text-right" : ""}`}>{m.time}</p>
                 </div>
               </div>
             ))}
 
-            {/* Booking CTA after last bot message */}
             {messages[messages.length - 1]?.text?.includes("confirm the booking") && (
-              <div className="flex gap-3 items-end">
-                <div className="w-8 h-8 opacity-0 shrink-0" />
+              <div className="flex gap-3 items-center pl-11">
                 <button
                   onClick={() => navigate("/app/booking/new")}
                   className="px-4 py-2 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
@@ -232,39 +218,30 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input — anchored at bottom */}
-          <div className="border-t border-border bg-card shrink-0 pb-14 md:pb-0">
-            {/* Image preview */}
+          {/* Input — fixed to viewport on mobile, normal flex on desktop */}
+          <div className="fixed bottom-[56px] left-0 right-0 md:relative md:bottom-auto bg-card border-t border-border shrink-0" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             {imagePreview && (
               <div className="px-3 pt-3">
                 <div className="relative inline-block">
                   <img src={imagePreview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-border" />
-                  <button
-                    onClick={() => setImagePreview(null)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"
-                  >
+                  <button onClick={() => setImagePreview(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="p-3 flex items-center gap-2">
-              {/* Gallery */}
+            <div className="px-3 pt-3 pb-1 flex items-center gap-2">
               <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
                 <Image className="w-5 h-5" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
 
-              {/* Camera */}
               <button onClick={() => cameraInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
                 <Camera className="w-5 h-5" />
               </button>
-              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
 
-              {/* Text input */}
               <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2.5 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
                 <input
                   value={input}
@@ -275,7 +252,6 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
                 />
               </div>
 
-              {/* Send */}
               <button
                 onClick={handleSend}
                 disabled={!input.trim() && !imagePreview}

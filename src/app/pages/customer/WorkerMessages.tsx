@@ -90,17 +90,11 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
   function handleSend() {
     const hasText = input.trim();
     if (!hasText && !imagePreview) return;
-
-    const newMsg: Message = {
-      from: "me",
-      text: hasText || undefined,
-      image: imagePreview || undefined,
-      time: now(),
-    };
-
     setConversations((prev) =>
       prev.map((c) =>
-        c.id === activeId ? { ...c, messages: [...c.messages, newMsg] } : c
+        c.id === activeId
+          ? { ...c, messages: [...c.messages, { from: "me", text: hasText || undefined, image: imagePreview || undefined, time: now() }] }
+          : c
       )
     );
     setInput("");
@@ -113,18 +107,19 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
     reader.readAsDataURL(file);
   }
 
-  function handleSelect(id: number) {
-    setActiveId(id);
-    setMobileShowChat(true);
-  }
+  // Nav height ~57px, mobile tab bar ~56px
+  const chatHeight = "calc(100dvh - 57px)";
 
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="bg-background flex flex-col" style={{ height: "100dvh" }}>
       <CustomerNav dark={dark} toggleDark={toggleDark} />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex overflow-hidden" style={{ height: chatHeight }}>
+
         {/* Conversation list */}
-        <aside className={`${mobileShowChat ? "hidden" : "flex"} md:flex w-full md:w-80 shrink-0 border-r border-border flex-col bg-card min-h-0`}>
+        <aside
+          className={`${mobileShowChat ? "hidden" : "flex"} md:flex w-full md:w-80 shrink-0 border-r border-border flex-col bg-card`}
+        >
           <div className="p-4 border-b border-border shrink-0">
             <h2 className="font-bold text-base mb-3">Messages</h2>
             <div className="relative">
@@ -135,28 +130,23 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pb-14 md:pb-0">
             {conversations.map((c) => {
               const isActive = c.id === activeId;
               const last = c.messages[c.messages.length - 1];
               return (
                 <button
                   key={c.id}
-                  onClick={() => handleSelect(c.id)}
+                  onClick={() => { setActiveId(c.id); setMobileShowChat(true); }}
                   className={`w-full text-left px-4 py-3.5 border-b border-border transition-colors flex items-start gap-3 ${isActive ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted"}`}
                 >
-                  <div
-                    className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                    style={{ background: c.avatarColor }}
-                  >
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: c.avatarColor }}>
                     {workerInitials(c.workerName)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold ${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}>{c.workerName}</p>
                     <p className="text-xs text-muted-foreground truncate">{c.skill}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {last.image ? "📷 Photo" : last.text}
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{last.image ? "📷 Photo" : last.text}</p>
                   </div>
                 </button>
               );
@@ -165,19 +155,14 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
         </aside>
 
         {/* Chat window */}
-        <div className={`${mobileShowChat ? "flex" : "hidden"} md:flex flex-1 flex-col min-h-0`}>
-          {/* Header — anchored */}
-          <div className="px-4 py-3 border-b border-border flex items-center gap-3 bg-card shrink-0">
-            <button
-              onClick={() => setMobileShowChat(false)}
-              className="md:hidden p-1.5 -ml-1 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-            >
+        <div className={`${mobileShowChat ? "flex" : "hidden"} md:flex flex-1 flex-col overflow-hidden min-h-0`}>
+
+          {/* Header — sticky, never scrolls */}
+          <div className="sticky top-0 z-20 px-4 py-3 border-b border-border flex items-center gap-3 bg-card shrink-0">
+            <button onClick={() => setMobileShowChat(false)} className="md:hidden p-1.5 -ml-1 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-              style={{ background: active.avatarColor }}
-            >
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: active.avatarColor }}>
               {workerInitials(active.workerName)}
             </div>
             <div>
@@ -186,26 +171,17 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
             </div>
           </div>
 
-          {/* Messages — scrollable middle */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Messages — only this scrolls */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32 md:pb-4">
             {active.messages.map((m, i) => (
               <div key={i} className={`flex ${m.from === "me" ? "justify-end" : "justify-start"} gap-2 items-end`}>
                 {m.from === "them" && (
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mb-1"
-                    style={{ background: active.avatarColor }}
-                  >
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 mb-1" style={{ background: active.avatarColor }}>
                     {workerInitials(active.workerName)}
                   </div>
                 )}
                 <div className="max-w-[75%] md:max-w-sm space-y-1">
-                  {m.image && (
-                    <img
-                      src={m.image}
-                      alt="sent"
-                      className="rounded-2xl max-w-full max-h-48 object-cover border border-border"
-                    />
-                  )}
+                  {m.image && <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-48 object-cover border border-border" />}
                   {m.text && (
                     <div
                       className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${m.from === "me" ? "text-white rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}
@@ -224,46 +200,30 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input — anchored at bottom */}
-          <div className="border-t border-border bg-card shrink-0 pb-14 md:pb-0">
-            {/* Image preview */}
+          {/* Input — fixed to viewport on mobile, normal flex on desktop */}
+          <div className="fixed bottom-[56px] left-0 right-0 md:relative md:bottom-auto bg-card border-t border-border shrink-0" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             {imagePreview && (
-              <div className="px-3 pt-3 flex items-start gap-2">
+              <div className="px-3 pt-3">
                 <div className="relative inline-block">
                   <img src={imagePreview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-border" />
-                  <button
-                    onClick={() => setImagePreview(null)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"
-                  >
+                  <button onClick={() => setImagePreview(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
               </div>
             )}
-
-            <div className="p-3 flex items-center gap-2">
-              {/* Gallery */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              >
+            <div className="px-3 pt-3 pb-2 flex items-center gap-2">
+              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
                 <Image className="w-5 h-5" />
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
 
-              {/* Camera */}
-              <button
-                onClick={() => cameraInputRef.current?.click()}
-                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
-              >
+              <button onClick={() => cameraInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
                 <Camera className="w-5 h-5" />
               </button>
-              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
 
-              {/* Text input */}
-              <div className="flex-1 flex items-center gap-2 bg-input-background rounded-xl px-4 py-2.5 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+              <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2.5 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -273,7 +233,6 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
                 />
               </div>
 
-              {/* Send */}
               <button
                 onClick={handleSend}
                 disabled={!input.trim() && !imagePreview}

@@ -56,7 +56,7 @@ export function CustomerNav({ dark, toggleDark }: { dark: boolean; toggleDark: (
       </nav>
 
       {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center h-[56px]">
         {CUSTOMER_LINKS.map(({ label, path, icon }) => {
           const isActive = location.pathname === path;
           return (
