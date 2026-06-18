@@ -1,94 +1,270 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Bot, Plus, Mic, Paperclip, Send, Star, ArrowRight } from "lucide-react";
+import { Bot, Plus, Send, Star, ArrowRight, Trash2, ArrowLeft, History, Image, Camera, X } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A } from "../../constants";
 
-function BotMsg({ text, extra }: { text: string; extra?: React.ReactNode }) {
-  return (
-    <div className="flex gap-2">
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: A }}><Bot className="w-5 h-5 text-white" /></div>
-      <div className="max-w-md bg-card border border-border rounded-2xl rounded-tl-none px-4 py-3">
-        <p className="text-sm">{text}</p>{extra}
+type MsgFrom = "bot" | "user";
+
+interface ChatMessage {
+  from: MsgFrom;
+  text?: string;
+  image?: string;
+  time: string;
+  extra?: React.ReactNode;
+}
+
+const HISTORY = [
+  { label: "Leaking sink repair",      ago: "2 days ago"  },
+  { label: "Electrician for rewiring", ago: "1 week ago"  },
+  { label: "Aircon cleaning",          ago: "2 weeks ago" },
+];
+
+const SUGGESTED_WORKERS = [
+  { name: "Maria Santos", rating: 4.7, dist: "1.2 km" },
+  { name: "Dennis Ramos", rating: 4.5, dist: "2.4 km" },
+  { name: "Carlo Abad",   rating: 4.4, dist: "3.1 km" },
+];
+
+function now() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  { from: "bot",  text: "Hi Ana! 👋 What service do you need today? Describe your problem and I'll find the right worker for you.", time: "10:00 AM" },
+  { from: "user", text: "My sink is leaking under the kitchen cabinet.", time: "10:01 AM" },
+  { from: "bot",  text: "Got it! Sounds like a pipe or drain leak — you need a plumber. Let me find the best ones near you 🔧", time: "10:01 AM" },
+  {
+    from: "bot",
+    text: "Here are the top plumbers near you:",
+    time: "10:02 AM",
+    extra: (
+      <div className="flex gap-2 flex-wrap mt-3">
+        {SUGGESTED_WORKERS.map((w) => (
+          <div key={w.name} className="bg-muted rounded-xl border border-border p-3 w-32 md:w-36">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold mb-2" style={{ background: A }}>
+              {w.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+            </div>
+            <p className="text-xs font-bold leading-tight">{w.name}</p>
+            <p className="text-xs text-muted-foreground">Plumber</p>
+            <div className="flex items-center gap-1 text-xs mt-1 text-muted-foreground">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="font-medium text-foreground">{w.rating}</span>
+              <span>· {w.dist}</span>
+            </div>
+          </div>
+        ))}
       </div>
-    </div>
-  );
-}
-function UserMsg({ text }: { text: string }) {
-  return (
-    <div className="flex justify-end">
-      <div className="max-w-md rounded-2xl rounded-tr-none px-4 py-3 text-white text-sm" style={{ background: A }}>{text}</div>
-    </div>
-  );
-}
+    ),
+  },
+  { from: "bot",  text: "Would you like me to check availability and book one for you?", time: "10:02 AM" },
+  { from: "user", text: "Yes, book Maria Santos for tomorrow morning.", time: "10:03 AM" },
+  { from: "bot",  text: "Maria Santos is available tomorrow morning! Taking you to confirm the booking now. 📅", time: "10:03 AM" },
+];
 
 export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
-  const [msg, setMsg] = useState("");
-  const history = [
-    { label: "Leaking sink repair", ago: "2 days ago" },
-    { label: "Electrician for rewiring", ago: "1 week ago" },
-    { label: "Aircon cleaning", ago: "2 weeks ago" },
-  ];
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [activeHistory, setActiveHistory] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [input, setInput] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  function handleSend() {
+    const hasText = input.trim();
+    if (!hasText && !imagePreview) return;
+
+    const userMsg: ChatMessage = { from: "user", text: hasText || undefined, image: imagePreview || undefined, time: now() };
+    const botReply: ChatMessage = {
+      from: "bot",
+      text: imagePreview
+        ? "I can see the photo! Let me assess the issue and find the right worker for you 🔍"
+        : "I'm on it! Give me a moment to find the best workers nearby 🔧",
+      time: now(),
+    };
+
+    setMessages((prev) => [...prev, userMsg, botReply]);
+    setInput("");
+    setImagePreview(null);
+  }
+
+  function handleImageFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  const chatHeight = "calc(100dvh - 57px)";
+
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="bg-background flex flex-col" style={{ height: "100dvh" }}>
       <CustomerNav dark={dark} toggleDark={toggleDark} />
-      <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 57px)" }}>
-        <div className="w-64 shrink-0 border-r border-border flex flex-col">
-          <div className="p-3 border-b border-border">
-            <button className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2" style={{ background: A }}>
+
+      <div className="flex overflow-hidden" style={{ height: chatHeight }}>
+
+        {/* Mobile overlay */}
+        {mobileSidebarOpen && (
+          <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileSidebarOpen(false)} />
+        )}
+
+        {/* Sidebar */}
+        <aside
+          className={`
+            fixed md:static inset-y-0 left-0 z-50
+            w-72 md:w-64 shrink-0 border-r border-border flex flex-col bg-card
+            transition-transform duration-200
+            ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          `}
+        >
+          <div className="p-3 border-b border-border flex items-center gap-2 shrink-0">
+            <button
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+              style={{ background: A }}
+              onClick={() => { setMessages([{ from: "bot", text: "Hi! 👋 What service do you need today?", time: now() }]); setMobileSidebarOpen(false); }}
+            >
               <Plus className="w-4 h-4" /> New Chat
             </button>
+            <button className="md:hidden p-2 rounded-xl text-muted-foreground hover:bg-muted" onClick={() => setMobileSidebarOpen(false)}>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            {history.map((h, i) => (
-              <button key={i} className={`w-full text-left px-3 py-2.5 rounded-xl hover:bg-muted transition-colors ${i === 0 ? "bg-muted" : ""}`}>
-                <p className="text-sm font-medium truncate">{h.label}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{h.ago}</p>
+
+          <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Recent Chats</p>
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+            {HISTORY.map((h, i) => (
+              <button
+                key={i}
+                onClick={() => { setActiveHistory(i); setMobileSidebarOpen(false); }}
+                className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors group flex items-center justify-between ${i === activeHistory ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted"}`}
+              >
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium truncate ${i === activeHistory ? "text-blue-600 dark:text-blue-400" : ""}`}>{h.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{h.ago}</p>
+                </div>
+                <span className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-red-500 transition-all">
+                  <Trash2 className="w-3 h-3" />
+                </span>
               </button>
             ))}
           </div>
-        </div>
-        <div className="flex-1 flex flex-col">
-          <div className="px-5 py-3 border-b border-border flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: A }}><Bot className="w-5 h-5 text-white" /></div>
+        </aside>
+
+        {/* Chat area */}
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+
+          {/* Header — sticky, never scrolls */}
+          <div className="sticky top-0 z-20 px-4 py-3 border-b border-border flex items-center gap-3 bg-card shrink-0">
+            <button className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" onClick={() => setMobileSidebarOpen(true)}>
+              <History className="w-5 h-5" />
+            </button>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: A }}>
+              <Bot className="w-5 h-5 text-white" />
+            </div>
             <div>
               <p className="font-bold text-sm">BlueBot</p>
-              <p className="text-xs text-muted-foreground flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" /> AI Assistant · Online</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" />
+                AI Assistant · Online
+              </p>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
-            <BotMsg text="Hi Ana! 👋 What service do you need today? Describe your problem and I'll find the right worker for you." />
-            <UserMsg text="My sink is leaking under the kitchen cabinet." />
-            <BotMsg text="Got it! Sounds like a pipe or drain leak — you need a plumber. Let me find the best ones near you 🔧" />
-            <div className="flex gap-2">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: A }}><Bot className="w-5 h-5 text-white" /></div>
-              <div className="flex gap-2 flex-wrap">
-                {[{ name: "Maria Santos", rating: 4.7, dist: "1.2km" }, { name: "Dennis Ramos", rating: 4.5, dist: "2.4km" }, { name: "Carlo Abad", rating: 4.4, dist: "3.1km" }].map((w) => (
-                  <div key={w.name} className="bg-card rounded-xl border border-border p-3 w-40">
-                    <p className="text-xs font-bold">{w.name}</p>
-                    <p className="text-xs text-muted-foreground">Plumber</p>
-                    <div className="flex items-center gap-1 text-xs mt-1"><Star className="w-3 h-3 fill-amber-400 text-amber-400" />{w.rating} · {w.dist}</div>
-                    <button onClick={() => navigate("/app/booking")} className="w-full mt-2 py-1 rounded-lg text-xs font-semibold text-white" style={{ background: A }}>Book</button>
+
+          {/* Messages — only this scrolls */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-5 pb-32 md:pb-4">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "gap-3 items-end"}`}>
+                {m.from === "bot" && (
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1" style={{ background: A }}>
+                    <Bot className="w-4 h-4 text-white" />
                   </div>
-                ))}
+                )}
+                <div className={`${m.from === "user" ? "max-w-[75%] md:max-w-md" : "max-w-[82%] md:max-w-lg"} space-y-1`}>
+                  {m.image && <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-48 object-cover border border-border" />}
+                  {(m.text || m.extra) && (
+                    <div
+                      className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${m.from === "user" ? "text-white rounded-br-sm" : "bg-card border border-border rounded-bl-sm"}`}
+                      style={m.from === "user" ? { background: A } : {}}
+                    >
+                      {m.text}
+                      {m.extra}
+                    </div>
+                  )}
+                  <p className={`text-xs text-muted-foreground ${m.from === "user" ? "text-right" : ""}`}>{m.time}</p>
+                </div>
               </div>
-            </div>
-            <BotMsg text="Would you like me to check availability and book one for you?" />
-            <UserMsg text="Yes, book Maria Santos for tomorrow morning." />
-            <BotMsg text="Maria Santos is available tomorrow morning! Taking you to confirm the booking now. 📅" extra={
-              <button onClick={() => navigate("/app/booking")} className="mt-2 px-4 py-1.5 rounded-lg text-xs font-semibold text-white flex items-center gap-1" style={{ background: A }}>
-                Proceed to Booking <ArrowRight className="w-3 h-3" />
-              </button>
-            } />
+            ))}
+
+            {messages[messages.length - 1]?.text?.includes("confirm the booking") && (
+              <div className="flex gap-3 items-center pl-11">
+                <button
+                  onClick={() => navigate("/app/booking/new")}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-white flex items-center gap-1.5 hover:opacity-90 transition-opacity"
+                  style={{ background: A }}
+                >
+                  Proceed to Booking <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-2 bg-input-background rounded-xl px-3 py-2 border border-border">
-              <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Ask BlueBot anything..." className="flex-1 bg-transparent text-sm focus:outline-none" />
-              <button className="text-muted-foreground hover:text-foreground"><Mic className="w-4 h-4" /></button>
-              <button className="text-muted-foreground hover:text-foreground"><Paperclip className="w-4 h-4" /></button>
-              <button className="p-1.5 rounded-lg text-white" style={{ background: A }}><Send className="w-4 h-4" /></button>
+
+          {/* Input — fixed to viewport on mobile, normal flex on desktop */}
+          <div className="fixed bottom-[56px] left-0 right-0 md:relative md:bottom-auto bg-card border-t border-border shrink-0" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+            {imagePreview && (
+              <div className="px-3 pt-3">
+                <div className="relative inline-block">
+                  <img src={imagePreview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-border" />
+                  <button onClick={() => setImagePreview(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="px-3 pt-3 pb-1 flex items-center gap-2">
+              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+                <Image className="w-5 h-5" />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+
+              <button onClick={() => cameraInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+                <Camera className="w-5 h-5" />
+              </button>
+              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+
+              <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2.5 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+                  placeholder="Ask BlueBot anything..."
+                  className="flex-1 bg-transparent text-sm focus:outline-none"
+                />
+              </div>
+
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && !imagePreview}
+                className="p-2.5 rounded-xl text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95 shrink-0"
+                style={{ background: A }}
+              >
+                <Send className="w-4 h-4" />
+              </button>
             </div>
+
+            <p className="text-center text-xs text-muted-foreground pb-2">
+              BlueBot can make mistakes. Always verify worker credentials.
+            </p>
           </div>
         </div>
       </div>

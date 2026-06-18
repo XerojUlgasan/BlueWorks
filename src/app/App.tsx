@@ -12,7 +12,9 @@ import BlueBotOnboard from "./pages/customer/BlueBotOnboard";
 import WorkerDiscovery from "./pages/customer/WorkerDiscovery";
 import WorkerProfile from "./pages/customer/WorkerProfile";
 import BookingFlow from "./pages/customer/BookingFlow";
+import MyBookings from "./pages/customer/MyBookings";
 import BlueBotChat from "./pages/customer/BlueBotChat";
+import WorkerMessages from "./pages/customer/WorkerMessages";
 import WorkerDashboard from "./pages/worker/Dashboard";
 import MyJobs from "./pages/worker/MyJobs";
 import SchedulePage from "./pages/worker/Schedule";
@@ -42,8 +44,11 @@ export default function App() {
             <Route path="/app/home" element={<RoleRoute requiredRole="customer"><BlueBotOnboard {...dp} /></RoleRoute>} />
             <Route path="/app/discover" element={<RoleRoute requiredRole="customer"><WorkerDiscovery {...dp} /></RoleRoute>} />
             <Route path="/app/worker/:id" element={<RoleRoute requiredRole="customer"><WorkerProfile {...dp} /></RoleRoute>} />
+            <Route path="/app/bookings" element={<RoleRoute requiredRole="customer"><MyBookings {...dp} /></RoleRoute>} />
+            <Route path="/app/booking/new" element={<RoleRoute requiredRole="customer"><BookingFlow {...dp} /></RoleRoute>} />
             <Route path="/app/booking" element={<RoleRoute requiredRole="customer"><BookingFlow {...dp} /></RoleRoute>} />
-            <Route path="/app/chat" element={<RoleRoute requiredRole="customer"><BlueBotChat {...dp} /></RoleRoute>} />
+            <Route path="/app/chat" element={<RoleRoute requiredRole="customer"><WorkerMessages {...dp} /></RoleRoute>} />
+            <Route path="/app/bluebot" element={<RoleRoute requiredRole="customer"><BlueBotChat {...dp} /></RoleRoute>} />
 
             {/* Worker protected */}
             <Route path="/worker/dashboard" element={<RoleRoute requiredRole="worker"><WorkerDashboard {...dp} /></RoleRoute>} />

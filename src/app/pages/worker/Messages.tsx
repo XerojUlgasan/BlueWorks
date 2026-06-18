@@ -52,8 +52,8 @@ export default function MessagesPage({ dark, toggleDark }: { dark: boolean; togg
             ))}
           </div>
         </div>
-        <div className="flex-1 flex flex-col">
-          <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-3 shrink-0">
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: A }}>{initials(convos[active].name)}</div>
             <div>
               <p className="font-bold text-sm">{convos[active].name}</p>
@@ -70,7 +70,7 @@ export default function MessagesPage({ dark, toggleDark }: { dark: boolean; togg
               </div>
             ))}
           </div>
-          <div className="p-4 border-t border-border">
+          <div className="p-4 border-t border-border shrink-0">
             <div className="flex items-center gap-2 bg-input-background rounded-xl px-3 py-2 border border-border">
               <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Type a message..." className="flex-1 bg-transparent text-sm focus:outline-none" />
               <button className="text-muted-foreground hover:text-foreground"><Paperclip className="w-4 h-4" /></button>
