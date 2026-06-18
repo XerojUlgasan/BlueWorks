@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, Bot, Sparkles, Plus, Trash2, ArrowLeft, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
+import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A, BLUEBOT_HISTORY } from "../../constants";
@@ -63,7 +63,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
               onClick={() => setMobileSidebarOpen(false)}
             >
-              <ArrowLeft className="w-4 h-4" />
+              <PanelLeftClose className="w-4 h-4" />
             </button>
           </div>
 
