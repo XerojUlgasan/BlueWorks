@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from "react-router";
 import { Wrench, Moon, Sun } from "lucide-react";
 import { A, P } from "../../constants";
 
@@ -91,20 +92,32 @@ export function SelectField({ label, options, value = "", onChange }: {
 
 export function PortalBanner({ type }: { type: "customer" | "worker" }) {
   const isCustomer = type === "customer";
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  const isRegister = pathname.includes("/register");
+  const destinationFor = (portal: "customer" | "worker") =>
+    isRegister ? `/${portal}/register` : `/${portal}/login`;
+
   return (
-    <div
-      className="flex items-center gap-2 py-2.5 px-4 rounded-xl mb-5 text-sm font-semibold"
-      style={{
-        background: isCustomer ? `${A}18` : `${P}18`,
-        border: `1.5px solid ${isCustomer ? A : P}40`,
-        color: isCustomer ? A : P,
-      }}
-    >
-      <span className="text-base">{isCustomer ? "👤" : "🔧"}</span>
-      {isCustomer ? "Customer Portal" : "Worker Portal"}
-      <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full text-white" style={{ background: isCustomer ? A : P }}>
-        {isCustomer ? "For Customers" : "For Workers"}
-      </span>
+    <div className="mb-5 grid grid-cols-2 gap-2">
+      {(["customer", "worker"] as const).map((portal) => {
+        const active = portal === type;
+        return (
+          <button
+            key={portal}
+            onClick={() => navigate(destinationFor(portal))}
+            className="flex items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5"
+            style={{
+              background: active ? `linear-gradient(135deg, ${A} 0%, ${P} 100%)` : "rgba(255,255,255,0.65)",
+              color: active ? "#ffffff" : isCustomer ? A : P,
+              boxShadow: active ? "0 10px 20px rgba(30, 41, 59, 0.12)" : "inset 0 0 0 1px rgba(148, 163, 184, 0.35)",
+            }}
+          >
+            {portal === "customer" ? "Customer" : "Worker"}
+          </button>
+        );
+      })}
     </div>
   );
 }
