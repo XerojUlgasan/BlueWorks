@@ -27,7 +27,9 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Only submit on Enter for non-touch devices; mobile users send via the button
+    const isTouchDevice = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (e.key === "Enter" && !e.shiftKey && !isTouchDevice) {
       e.preventDefault();
       handleSubmit();
     }
