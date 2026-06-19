@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { A, BLUEBOT_HISTORY } from "../../constants";
 
 const CHIPS = [
@@ -16,11 +17,15 @@ const CHIPS = [
 
 export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [query, setQuery] = useState("");
   const [activeHistory, setActiveHistory] = useState<number | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const focused = query.length > 0;
+
+  const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
+  const userFullname = user?.fullname || "User";
 
   function handleSubmit() {
     if (query.trim()) navigate("/app/bluebot");
@@ -148,11 +153,11 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                 style={{ background: A }}
               >
-                AR
+                {userInitials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate">Ana Reyes</p>
-                <p className="text-xs text-muted-foreground truncate">ana.reyes@email.com</p>
+                <p className="text-sm font-semibold truncate">{userFullname}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email || "user@email.com"}</p>
               </div>
               <button
                 onClick={() => navigate("/")}
@@ -202,7 +207,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 BlueBot AI
               </p>
               <p className="text-base font-semibold mb-1 text-gray-600 dark:text-blue-100/70">
-                Hi Ana, welcome back.
+                Hi {userFullname}, welcome back.
               </p>
               <h1
                 className="text-2xl md:text-3xl font-extrabold mb-2 text-center leading-tight text-gray-900 dark:text-white"

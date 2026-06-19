@@ -4,6 +4,7 @@ import { Bell, Home, Briefcase, Calendar, MessageCircle, User, DollarSign, LogOu
 import { Logo, DarkToggle } from "./index";
 import { A, P } from "../../constants";
 import { initials } from "./index";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 
 const CUSTOMER_LINKS = [
   { label: "Home",         path: "/app/home",      icon: <Home className="w-5 h-5" /> },
@@ -32,6 +33,7 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () =
 export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: boolean; toggleDark: () => void; transparent?: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, loading } = useCurrentUser();
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen]     = useState(false);
@@ -46,6 +48,9 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
 
   // Only go fully transparent (white text) when dark mode is on — light mode still needs readable dark text
   const isTransparent = transparent && dark;
+
+  const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
+  const userName = user?.fullname || "User";
 
   return (
     <>
@@ -134,15 +139,15 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
               className="w-8 h-8 rounded-full text-white flex items-center justify-center text-xs font-bold hover:opacity-90 transition-opacity"
               style={{ background: A }}
             >
-              AR
+              {userInitials}
             </button>
 
             {profileOpen && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                 <div className="px-4 py-4 flex items-center gap-3 border-b border-border">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: A }}>AR</div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: A }}>{userInitials}</div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-sm truncate">Ana Reyes</p>
+                    <p className="font-semibold text-sm truncate">{userName}</p>
                     <p className="text-xs text-muted-foreground">Customer</p>
                   </div>
                 </div>
@@ -194,6 +199,8 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
 export function WorkerSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useCurrentUser();
+
   const items = [
     { icon: <Home className="w-5 h-5" />,         label: "Dashboard", path: "/worker/dashboard" },
     { icon: <Briefcase className="w-5 h-5" />,     label: "My Jobs",   path: "/worker/jobs"      },
@@ -202,6 +209,11 @@ export function WorkerSidebar() {
     { icon: <User className="w-5 h-5" />,          label: "My Profile",path: "/worker/profile"   },
     { icon: <DollarSign className="w-5 h-5" />,    label: "Earnings",  path: "/worker/earnings"  },
   ];
+
+  const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
+  const userFullname = user?.fullname || "Worker";
+  const userRole = user?.role === "worker" ? "Service Provider" : user?.role || "Worker";
+
   return (
     <aside className="w-64 shrink-0 flex flex-col h-screen sticky top-0" style={{ backgroundColor: P }}>
       <div className="p-5 border-b border-white/10"><Logo light /></div>
@@ -219,10 +231,10 @@ export function WorkerSidebar() {
         ))}
       </nav>
       <div className="p-4 border-t border-white/10 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: A }}>JC</div>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: A }}>{userInitials}</div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white truncate">Juan dela Cruz</p>
-          <p className="text-xs text-white/60">Electrician</p>
+          <p className="text-sm font-semibold text-white truncate">{userFullname}</p>
+          <p className="text-xs text-white/60">{userRole}</p>
         </div>
         <button className="text-white/50 hover:text-white/80 transition-colors"><LogOut className="w-4 h-4" /></button>
       </div>
