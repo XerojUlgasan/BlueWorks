@@ -26,6 +26,13 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
     if (query.trim()) navigate("/app/bluebot");
   }
 
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
   return (
     <div className="bg-background dark:bg-transparent" style={{ height: "100dvh", overflow: "hidden" }}>
       {/* Dark mode background */}
@@ -208,31 +215,40 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               {/* Input */}
               <div className="w-full max-w-xl">
                 <div
-                  className="flex items-center gap-2 px-4 py-3.5 rounded-2xl transition-all duration-200
+                  className="flex flex-col gap-2 px-4 pt-3.5 pb-3 rounded-2xl transition-all duration-200
                     bg-white dark:bg-white/5
                     border-2 border-gray-200 dark:border-white/10
                     shadow-md dark:shadow-none"
                   style={{ borderColor: focused ? A : undefined }}
                 >
-                  <input
+                  <textarea
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    onKeyDown={handleKeyDown}
                     placeholder="e.g. My sink is leaking..."
-                    className="flex-1 min-w-0 bg-transparent text-sm md:text-base focus:outline-none
+                    rows={1}
+                    className="w-full bg-transparent text-sm md:text-base focus:outline-none resize-none
                       text-gray-800 placeholder:text-gray-400
                       dark:text-white dark:placeholder:text-blue-200/35"
+                    style={{ maxHeight: "120px", overflowY: "auto" }}
+                    onInput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                    }}
                   />
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!query.trim()}
-                    className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5 shrink-0
-                      transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
-                    style={{ background: A }}
-                  >
-                    <span className="hidden sm:inline">Find Worker</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!query.trim()}
+                      className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5 shrink-0
+                        transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                      style={{ background: A }}
+                    >
+                      <span>Find Worker</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Chips */}
@@ -254,9 +270,9 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
               <button
                 onClick={() => navigate("/app/discover")}
-                className="mt-8 text-xs underline underline-offset-4 transition-colors
-                  text-gray-400 hover:text-blue-600
-                  dark:text-blue-300/50 dark:hover:text-blue-300"
+                className="mt-8 text-xs font-semibold transition-colors
+                  text-blue-500 hover:text-blue-700 underline underline-offset-4 decoration-blue-400 hover:decoration-blue-700
+                  dark:text-blue-400 dark:hover:text-blue-300 dark:decoration-blue-500 dark:hover:decoration-blue-300"
               >
                 Prefer to search manually? Browse Workers →
               </button>
