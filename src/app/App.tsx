@@ -24,8 +24,17 @@ import EarningsPage from "./pages/worker/Earnings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 export default function App() {
-  const [dark, setDark] = useState(false);
-  const toggleDark = () => setDark((d) => !d);
+  const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const toggleDark = () => setDark((d) => {
+    const next = !d;
+    localStorage.setItem("theme", next ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", next);
+    return next;
+  });
+
+  // Sync on mount in case localStorage already has dark
+  if (dark) document.documentElement.classList.add("dark");
+  else document.documentElement.classList.remove("dark");
   const dp = { dark, toggleDark };
 
   return (

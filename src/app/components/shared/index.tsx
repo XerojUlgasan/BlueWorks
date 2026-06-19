@@ -3,7 +3,8 @@ import { Wrench, Moon, Sun } from "lucide-react";
 import { A, P } from "../../constants";
 
 export function initials(name: string) {
-  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const parts = name.split(" ");
+  return parts[0][0].toUpperCase();
 }
 
 export function Logo({ size = "md", light = false }: { size?: "sm" | "md" | "lg"; light?: boolean }) {
@@ -14,7 +15,7 @@ export function Logo({ size = "md", light = false }: { size?: "sm" | "md" | "lg"
       <div className={`${iconSize} rounded-lg flex items-center justify-center`} style={{ background: light ? "rgba(255,255,255,0.2)" : A }}>
         <Wrench className={`${size === "sm" ? "w-3 h-3" : "w-4 h-4"} text-white`} />
       </div>
-      <span className={`font-bold ${textSize} ${light ? "text-white" : ""}`} style={!light ? { color: P } : {}}>
+      <span className={`font-bold ${textSize} ${light ? "text-white" : "logo-blue-text"}`}>
         Blue<span style={{ color: A }}>Works</span>
       </span>
     </div>

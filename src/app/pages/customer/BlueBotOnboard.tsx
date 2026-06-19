@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
+import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { A, BLUEBOT_HISTORY } from "../../constants";
 
 const CHIPS = [
@@ -16,20 +17,31 @@ const CHIPS = [
 
 export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
+  const { user } = useCurrentUser();
   const [query, setQuery] = useState("");
   const [activeHistory, setActiveHistory] = useState<number | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const focused = query.length > 0;
+
+  const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
+  const userFullname = user?.fullname || "User";
 
   function handleSubmit() {
     if (query.trim()) navigate("/app/bluebot");
   }
 
-  const contentHeight = "calc(100dvh - 57px)";
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Only submit on Enter for non-touch devices; mobile users send via the button
+    const isTouchDevice = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    if (e.key === "Enter" && !e.shiftKey && !isTouchDevice) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
 
   return (
-    <div className="bg-background dark:bg-transparent flex flex-col" style={{ height: "100dvh" }}>
+    <div className="bg-background dark:bg-transparent" style={{ height: "100dvh", overflow: "hidden" }}>
       {/* Dark mode background */}
       <div
         className="fixed inset-0 -z-10 hidden dark:block"
@@ -38,19 +50,28 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
       <CustomerNav dark={dark} toggleDark={toggleDark} transparent />
 
-      <div className="flex overflow-hidden" style={{ height: contentHeight }}>
+      {/* Mobile-only fixed sidebar toggle — sits below the fixed nav */}
+      <button
+        className="md:hidden fixed z-40 p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        style={{ top: "52px", left: "12px" }}
+        onClick={() => setMobileSidebarOpen(true)}
+      >
+        <PanelLeft className="w-5 h-5" />
+      </button>
+
+      <div className="flex h-full overflow-hidden">
 
         {/* Mobile overlay */}
         {mobileSidebarOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="md:hidden fixed inset-0 bg-black/50 z-[55]" onClick={() => setMobileSidebarOpen(false)} />
         )}
 
         {/* Sidebar */}
         <aside
           className={`
-            fixed md:static inset-y-0 left-0 z-50
-            w-72 md:w-64 shrink-0 border-r border-border flex flex-col
-            bg-card dark:bg-slate-900/80
+            fixed md:static inset-y-0 left-0 z-[60]
+            w-72 md:w-[260px] shrink-0 border-r border-border flex flex-col md:h-full
+            bg-card dark:bg-slate-900/80 md:dark:bg-slate-900
             transition-transform duration-200
             ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
             ${desktopSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full md:hidden"}
@@ -60,10 +81,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
           <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
             <Logo />
             <button
-              className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
               onClick={() => setMobileSidebarOpen(false)}
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <PanelLeftClose className="w-5 h-5" />
             </button>
           </div>
 
@@ -72,10 +93,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <Logo />
               <button
-                className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
                 onClick={() => setDesktopSidebarOpen(false)}
               >
-                <PanelLeftClose className="w-4 h-4" />
+                <PanelLeftClose className="w-5 h-5" />
               </button>
             </div>
             <div className="p-3">
@@ -132,11 +153,11 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                 style={{ background: A }}
               >
-                AR
+                {userInitials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold truncate">Ana Reyes</p>
-                <p className="text-xs text-muted-foreground truncate">ana.reyes@email.com</p>
+                <p className="text-sm font-semibold truncate">{userFullname}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email || "user@email.com"}</p>
               </div>
               <button
                 onClick={() => navigate("/")}
@@ -151,14 +172,8 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         {/* Main area */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
 
-          {/* Toggle buttons row */}
-          <div className="shrink-0 px-3 pt-[61px] pb-2 flex items-center">
-            <button
-              className="md:hidden p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              onClick={() => setMobileSidebarOpen(true)}
-            >
-              <PanelLeft className="w-5 h-5" />
-            </button>
+          {/* Toggle buttons row — mobile button is fixed below the nav; desktop stays in flow */}
+          <div className="shrink-0 px-3 hidden md:flex items-center" style={{ height: "69px", paddingTop: "61px" }}>
             {!desktopSidebarOpen && (
               <button
                 className="hidden md:flex p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 transition-colors"
@@ -192,7 +207,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 BlueBot AI
               </p>
               <p className="text-base font-semibold mb-1 text-gray-600 dark:text-blue-100/70">
-                Hi Ana, welcome back.
+                Hi {userFullname}, welcome back.
               </p>
               <h1
                 className="text-2xl md:text-3xl font-extrabold mb-2 text-center leading-tight text-gray-900 dark:text-white"
@@ -207,31 +222,40 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               {/* Input */}
               <div className="w-full max-w-xl">
                 <div
-                  className="flex items-center gap-2 px-4 py-3.5 rounded-2xl transition-all duration-200
+                  className="flex flex-col gap-2 px-4 pt-3.5 pb-3 rounded-2xl transition-all duration-200
                     bg-white dark:bg-white/5
                     border-2 border-gray-200 dark:border-white/10
                     shadow-md dark:shadow-none"
                   style={{ borderColor: focused ? A : undefined }}
                 >
-                  <input
+                  <textarea
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                    onKeyDown={handleKeyDown}
                     placeholder="e.g. My sink is leaking..."
-                    className="flex-1 min-w-0 bg-transparent text-sm md:text-base focus:outline-none
+                    rows={1}
+                    className="w-full bg-transparent text-sm md:text-base focus:outline-none resize-none
                       text-gray-800 placeholder:text-gray-400
                       dark:text-white dark:placeholder:text-blue-200/35"
+                    style={{ maxHeight: "120px", overflowY: "auto" }}
+                    onInput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+                    }}
                   />
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!query.trim()}
-                    className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5 shrink-0
-                      transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
-                    style={{ background: A }}
-                  >
-                    <span className="hidden sm:inline">Find Worker</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!query.trim()}
+                      className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-1.5 shrink-0
+                        transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                      style={{ background: A }}
+                    >
+                      <span>Find Worker</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Chips */}
@@ -253,9 +277,9 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
               <button
                 onClick={() => navigate("/app/discover")}
-                className="mt-8 text-xs underline underline-offset-4 transition-colors
-                  text-gray-400 hover:text-blue-600
-                  dark:text-blue-300/50 dark:hover:text-blue-300"
+                className="mt-8 text-xs font-semibold transition-colors
+                  text-blue-500 hover:text-blue-700 underline underline-offset-4 decoration-blue-400 hover:decoration-blue-700
+                  dark:text-blue-400 dark:hover:text-blue-300 dark:decoration-blue-500 dark:hover:decoration-blue-300"
               >
                 Prefer to search manually? Browse Workers →
               </button>
