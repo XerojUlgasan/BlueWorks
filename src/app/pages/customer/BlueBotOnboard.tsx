@@ -19,17 +19,15 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
   const [query, setQuery] = useState("");
   const [activeHistory, setActiveHistory] = useState<number | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const focused = query.length > 0;
 
   function handleSubmit() {
     if (query.trim()) navigate("/app/bluebot");
   }
 
-  const contentHeight = "calc(100dvh - 57px)";
-
   return (
-    <div className="bg-background dark:bg-transparent flex flex-col" style={{ height: "100dvh" }}>
+    <div className="bg-background dark:bg-transparent" style={{ height: "100dvh", overflow: "hidden" }}>
       {/* Dark mode background */}
       <div
         className="fixed inset-0 -z-10 hidden dark:block"
@@ -38,7 +36,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
       <CustomerNav dark={dark} toggleDark={toggleDark} transparent />
 
-      <div className="flex overflow-hidden" style={{ height: contentHeight }}>
+      <div className="flex h-full overflow-hidden">
 
         {/* Mobile overlay */}
         {mobileSidebarOpen && (
@@ -49,8 +47,8 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         <aside
           className={`
             fixed md:static inset-y-0 left-0 z-50
-            w-72 md:w-64 shrink-0 border-r border-border flex flex-col
-            bg-card dark:bg-slate-900/80
+            w-72 md:w-64 shrink-0 border-r border-border flex flex-col md:h-full
+            bg-card dark:bg-slate-900/80 md:dark:bg-slate-900
             transition-transform duration-200
             ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
             ${desktopSidebarOpen ? "md:translate-x-0" : "md:-translate-x-full md:hidden"}
@@ -151,8 +149,8 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         {/* Main area */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
 
-          {/* Toggle buttons row */}
-          <div className="shrink-0 px-3 pt-[61px] pb-2 flex items-center">
+          {/* Toggle buttons row — fixed height so content position is stable regardless of sidebar state */}
+          <div className="shrink-0 px-3 flex items-center" style={{ height: "69px", paddingTop: "61px" }}>
             <button
               className="md:hidden p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               onClick={() => setMobileSidebarOpen(true)}

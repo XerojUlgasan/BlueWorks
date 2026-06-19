@@ -24,8 +24,12 @@ import EarningsPage from "./pages/worker/Earnings";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 
 export default function App() {
-  const [dark, setDark] = useState(false);
-  const toggleDark = () => setDark((d) => !d);
+  const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
+  const toggleDark = () => setDark((d) => {
+    const next = !d;
+    localStorage.setItem("theme", next ? "dark" : "light");
+    return next;
+  });
   const dp = { dark, toggleDark };
 
   return (
