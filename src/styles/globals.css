@@ -1,0 +1,7 @@
+.logo-blue-text {
+  color: #1B3A6B;
+}
+
+.dark .logo-blue-text {
+  color: rgba(255, 255, 255, 0.75);
+}
