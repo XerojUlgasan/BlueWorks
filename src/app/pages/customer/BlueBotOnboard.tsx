@@ -40,14 +40,14 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
         {/* Mobile overlay */}
         {mobileSidebarOpen && (
-          <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileSidebarOpen(false)} />
+          <div className="md:hidden fixed inset-0 bg-black/50 z-[55]" onClick={() => setMobileSidebarOpen(false)} />
         )}
 
         {/* Sidebar */}
         <aside
           className={`
-            fixed md:static inset-y-0 left-0 z-50
-            w-72 md:w-64 shrink-0 border-r border-border flex flex-col md:h-full
+            fixed md:static inset-y-0 left-0 z-[60]
+            w-72 md:w-[260px] shrink-0 border-r border-border flex flex-col md:h-full
             bg-card dark:bg-slate-900/80 md:dark:bg-slate-900
             transition-transform duration-200
             ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
@@ -58,10 +58,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
           <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
             <Logo />
             <button
-              className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
               onClick={() => setMobileSidebarOpen(false)}
             >
-              <PanelLeftClose className="w-4 h-4" />
+              <PanelLeftClose className="w-5 h-5" />
             </button>
           </div>
 
@@ -70,10 +70,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <Logo />
               <button
-                className="p-2 rounded-xl text-muted-foreground hover:bg-muted transition-colors"
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
                 onClick={() => setDesktopSidebarOpen(false)}
               >
-                <PanelLeftClose className="w-4 h-4" />
+                <PanelLeftClose className="w-5 h-5" />
               </button>
             </div>
             <div className="p-3">
