@@ -36,6 +36,15 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
 
       <CustomerNav dark={dark} toggleDark={toggleDark} transparent />
 
+      {/* Mobile-only fixed sidebar toggle — sits below the fixed nav */}
+      <button
+        className="md:hidden fixed z-40 p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+        style={{ top: "52px", left: "12px" }}
+        onClick={() => setMobileSidebarOpen(true)}
+      >
+        <PanelLeft className="w-5 h-5" />
+      </button>
+
       <div className="flex h-full overflow-hidden">
 
         {/* Mobile overlay */}
@@ -149,14 +158,8 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
         {/* Main area */}
         <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
 
-          {/* Toggle buttons row — fixed height so content position is stable regardless of sidebar state */}
-          <div className="shrink-0 px-3 flex items-center" style={{ height: "69px", paddingTop: "61px" }}>
-            <button
-              className="md:hidden p-1.5 rounded-lg text-muted-foreground dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-              onClick={() => setMobileSidebarOpen(true)}
-            >
-              <PanelLeft className="w-5 h-5" />
-            </button>
+          {/* Toggle buttons row — mobile button is fixed below the nav; desktop stays in flow */}
+          <div className="shrink-0 px-3 hidden md:flex items-center" style={{ height: "69px", paddingTop: "61px" }}>
             {!desktopSidebarOpen && (
               <button
                 className="hidden md:flex p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 transition-colors"
