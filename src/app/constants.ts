@@ -1,10 +1,41 @@
 export const P = "#1B3A6B"; // primary blue
 export const A = "#3B82F6"; // accent sky blue
 
-export const BLUEBOT_HISTORY = [
-  { label: "Leaking sink repair",      ago: "2 days ago"  },
-  { label: "Electrician for rewiring", ago: "1 week ago"  },
-  { label: "Aircon cleaning",          ago: "2 weeks ago" },
+export const BLUEBOT_HISTORY: { label: string; ago: string; messages: { from: "user" | "bot"; text: string }[] }[] = [
+  {
+    label: "Leaking sink repair",
+    ago: "2 days ago",
+    messages: [
+      { from: "user", text: "My kitchen sink has been leaking for 2 days now." },
+      { from: "bot",  text: "I can help with that! Is the leak coming from the faucet, the drain, or the pipes under the sink?" },
+      { from: "user", text: "It's under the sink, near the pipe joint." },
+      { from: "bot",  text: "Got it — that's likely a loose or worn pipe fitting. I found 3 plumbers available today near you. Want me to show them?" },
+      { from: "user", text: "Yes please." },
+      { from: "bot",  text: "Here are the top matches: Juan dela Cruz (4.9★, 0.8 km), Maria Santos (4.7★, 1.2 km). Tap one to book!" },
+    ],
+  },
+  {
+    label: "Electrician for rewiring",
+    ago: "1 week ago",
+    messages: [
+      { from: "user", text: "I need someone to rewire my living room. Some outlets stopped working." },
+      { from: "bot",  text: "That sounds like a tripped breaker or faulty wiring. Is the whole room affected or just specific outlets?" },
+      { from: "user", text: "Just 2 outlets on one wall." },
+      { from: "bot",  text: "Likely a single circuit issue. I found 2 licensed electricians available this week near you." },
+      { from: "user", text: "Can they come tomorrow?" },
+      { from: "bot",  text: "Yes! Ben Villanueva is available tomorrow. Want me to send him a booking request?" },
+    ],
+  },
+  {
+    label: "Aircon cleaning",
+    ago: "2 weeks ago",
+    messages: [
+      { from: "user", text: "My aircon is blowing warm air and smells musty." },
+      { from: "bot",  text: "That usually means the filters are clogged or the unit needs a general cleaning. When was it last cleaned?" },
+      { from: "user", text: "Maybe 8 months ago." },
+      { from: "bot",  text: "Definitely overdue! I found an aircon technician available today — Rico Reyes (4.8★, 2.1 km). Shall I book?" },
+    ],
+  },
 ];
 
 export const BARANGAYS = [
