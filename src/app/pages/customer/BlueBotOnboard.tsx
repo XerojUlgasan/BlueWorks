@@ -207,8 +207,11 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
           {/* ── CHAT view ── */}
           {activeChatIndex !== null && (
             <div
-              className="flex flex-col md:flex-1 md:h-full md:static bg-background dark:bg-transparent"
-              style={{ position: "fixed", top: "48px", left: 0, right: 0, bottom: "56px" }}
+              className={`flex flex-col bg-background dark:bg-transparent md:flex-1 md:h-full ${
+                // mobile only: fixed between top nav and bottom tab bar
+                "max-md:fixed max-md:inset-x-0"
+              }`}
+              style={{ top: "48px", bottom: "56px" }}
             >
               {/* Chat header */}
               <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-background">
@@ -308,7 +311,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                   </button>
                 </div>
               )}
-              <div className="min-h-full flex flex-col items-center justify-center px-4 py-6 pb-20 md:pb-6">
+              <div className={`min-h-full flex flex-col items-center justify-center px-4 py-6 pb-20 md:justify-start md:pb-6 ${desktopSidebarOpen ? "md:pt-8" : "md:-mt-4"}`}>
 
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4 relative
