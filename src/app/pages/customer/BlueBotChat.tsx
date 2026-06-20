@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { Bot, Plus, Send, Star, ArrowRight, Trash2, ArrowLeft, History, Image, Camera, X } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
@@ -58,8 +58,34 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 
 export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [activeHistory, setActiveHistory] = useState(0);  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Read history and pending query from localStorage (set by BlueBotOnboard on submit)
+  const initialHistory = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("bluebot_history") || "null") || BLUEBOT_HISTORY; }
+    catch { return BLUEBOT_HISTORY; }
+  }, []);
+
+  const pendingQuery = useMemo(() => {
+    const q = localStorage.getItem("bluebot_pending_query") || "";
+    localStorage.removeItem("bluebot_pending_query"); // consume once
+    return q;
+  }, []);
+
+  const initialMessages: ChatMessage[] = useMemo(() => {
+    if (pendingQuery) {
+      return [
+        { from: "bot",  text: "Hi! 👋 Describe your problem and I'll find the right worker for you.", time: now() },
+        { from: "user", text: pendingQuery, time: now() },
+        { from: "bot",  text: "Got it! Let me find the best workers nearby for you 🔧", time: now() },
+      ];
+    }
+    return INITIAL_MESSAGES;
+  }, [pendingQuery]);
+
+  const [history, setHistory] = useState(initialHistory);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [activeHistory, setActiveHistory] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [input, setInput] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -85,6 +111,16 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
     };
 
     setMessages((prev) => [...prev, userMsg, botReply]);
+
+    // Update the active history entry label with the first user message
+    if (hasText && history[activeHistory]?.label === "New chat") {
+      const updated = history.map((h, i) =>
+        i === activeHistory ? { ...h, label: hasText.slice(0, 40) } : h
+      );
+      setHistory(updated);
+      localStorage.setItem("bluebot_history", JSON.stringify(updated));
+    }
+
     setInput("");
     setImagePreview(null);
   }
@@ -121,7 +157,15 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
             <button
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
               style={{ background: A }}
-              onClick={() => { setMessages([{ from: "bot", text: "Hi! 👋 What service do you need today?", time: now() }]); setMobileSidebarOpen(false); }}
+              onClick={() => {
+                const newEntry = { label: "New chat", ago: "Just now" };
+                const updated = [newEntry, ...history];
+                setHistory(updated);
+                localStorage.setItem("bluebot_history", JSON.stringify(updated));
+                setMessages([{ from: "bot", text: "Hi! 👋 What service do you need today?", time: now() }]);
+                setActiveHistory(0);
+                setMobileSidebarOpen(false);
+              }}
             >
               <Plus className="w-4 h-4" /> New Chat
             </button>
@@ -133,7 +177,7 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
           <p className="px-3 pt-3 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider shrink-0">Recent Chats</p>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {BLUEBOT_HISTORY.map((h, i) => (
+            {history.map((h, i) => (
               <button
                 key={i}
                 onClick={() => { setActiveHistory(i); setMobileSidebarOpen(false); }}
