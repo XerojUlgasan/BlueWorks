@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router";
 import { Bell, Home, Briefcase, Calendar, MessageCircle, User, DollarSign, LogOut, Wrench, Users, BarChart2, Settings, AlertTriangle, Bot } from "lucide-react";
 import { Logo, DarkToggle } from "./index";
 import { A, P } from "../../constants";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "../ui/alert-dialog";
 import { initials } from "./index";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 
@@ -37,6 +38,7 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
 
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen]     = useState(false);
+  const [logoutOpen, setLogoutOpen]   = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef   = useRef<HTMLDivElement>(null);
@@ -159,7 +161,7 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
                     <User className="w-4 h-4 text-muted-foreground" /> My Profile
                   </button>
                   <button
-                    onClick={() => { setProfileOpen(false); navigate("/"); }}
+                    onClick={() => { setProfileOpen(false); setLogoutOpen(true); }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 transition-colors text-left"
                   >
                     <LogOut className="w-4 h-4" /> Log out
@@ -192,6 +194,23 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
           );
         })}
       </nav>
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>You'll be returned to the login screen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => navigate("/")}
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

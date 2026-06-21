@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
 import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
 import { A, BLUEBOT_HISTORY } from "../../constants";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "../../components/ui/alert-dialog";
 
 const CHIPS = [
   { emoji: "🔧", label: "Leaking pipe" },
@@ -24,9 +25,16 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState(BLUEBOT_HISTORY);
   const [chatInput, setChatInput] = useState("");
+  const [logoutOpen, setLogoutOpen] = useState(false);
 
   const activeChatIndex = activeHistory;
   const focused = query.length > 0;
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [chatHistory, activeHistory]);
 
   const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
   const userFullname = user?.fullname || "User";
@@ -77,7 +85,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
   }
 
   return (
-    <div className="bg-background dark:bg-transparent" style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div className="bg-background dark:bg-transparent relative" style={{ height: "100dvh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div
         className="fixed inset-0 -z-10 hidden dark:block"
         style={{ background: "linear-gradient(135deg, #0F172A 0%, #1B3A6B 100%)" }}
@@ -192,7 +200,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 <p className="text-xs text-muted-foreground truncate">{user?.email || "user@email.com"}</p>
               </div>
               <button
-                onClick={() => navigate("/")}
+                onClick={() => setLogoutOpen(true)}
                 className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors shrink-0"
               >
                 <LogOut className="w-4 h-4" />
@@ -211,10 +219,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 // mobile only: fixed between top nav and bottom tab bar
                 "max-md:fixed max-md:inset-x-0"
               }`}
-              style={{ top: "48px", bottom: "56px" }}
+              style={{ top: "62px", bottom: "56px" }}
             >
               {/* Chat header */}
-              <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-background">
+              <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
                 <button
                   className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                   onClick={() => setMobileSidebarOpen(true)}
@@ -244,13 +252,13 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               {/* Messages — only this scrolls */}
               <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
                 {chatHistory[activeChatIndex]?.messages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
+                  <div key={i} className={`flex items-end ${msg.from === "user" ? "justify-end" : "gap-3"}`}>
                     {msg.from === "bot" && (
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5"
+                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
                         style={{ background: "linear-gradient(135deg, #3B82F6, #1B3A6B)" }}
                       >
-                        <Bot className="w-3 h-3 text-white" />
+                        <Bot className="w-3.5 h-3.5 text-white" />
                       </div>
                     )}
                     <div
@@ -265,18 +273,20 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                     </div>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Input */}
-              <div className="shrink-0 px-4 py-3 border-t border-border bg-background">
+              <div className="shrink-0 px-4 py-3 border-t border-border bg-card">
                 <div className="flex gap-2">
                   <textarea
+                    ref={chatInputRef}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={handleChatKeyDown}
                     placeholder="Continue the conversation..."
                     rows={1}
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none resize-none
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none resize-none
                       text-gray-800 placeholder:text-gray-400 dark:text-white dark:placeholder:text-blue-200/35"
                     style={{ maxHeight: "80px", overflowY: "auto" }}
                     onInput={(e) => {
@@ -294,13 +304,14 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                     Send
                   </button>
                 </div>
+                <p className="text-xs text-muted-foreground mt-2 text-center">BlueBot can make mistakes. Please verify important information.</p>
               </div>
             </div>
           )}
 
           {/* ── ONBOARD view ── */}
           {activeChatIndex === null && (
-            <div className="flex-1 overflow-y-auto overflow-x-hidden pt-[48px] md:pt-0">
+            <div className="flex-1 overflow-hidden overflow-x-hidden pt-[48px] md:pt-0">
               {!desktopSidebarOpen && (
                 <div className="hidden md:flex px-3 pt-3">
                   <button
@@ -311,7 +322,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                   </button>
                 </div>
               )}
-              <div className={`min-h-full flex flex-col items-center justify-center px-4 py-6 pb-20 md:justify-start md:pb-6 ${desktopSidebarOpen ? "md:pt-8" : "md:-mt-4"}`}>
+              <div className={`min-h-full flex flex-col items-center justify-center px-4 py-6 pb-20 md:justify-start md:pb-6 ${desktopSidebarOpen ? "md:pt-12" : "md:-mt-4"}`}>
 
                 <div
                   className="w-16 h-16 rounded-full flex items-center justify-center mb-4 relative
@@ -408,6 +419,23 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
           )}
         </div>
       </div>
+      <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Log out?</AlertDialogTitle>
+            <AlertDialogDescription>You'll be returned to the login screen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2 sm:gap-3">
+            <AlertDialogCancel className="flex-1">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => navigate("/")}
+            >
+              Log out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
