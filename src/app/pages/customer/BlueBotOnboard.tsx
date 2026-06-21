@@ -247,6 +247,14 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                   <p className="text-sm font-semibold leading-none">BlueBot</p>
                   <p className="text-xs text-muted-foreground mt-0.5">AI Assistant · Online</p>
                 </div>
+                <div className="flex-1" />
+                <button
+                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
+                  onClick={() => { setQuery(""); setActiveHistory(null); }}
+                  title="New Chat"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
               </div>
 
               {/* Messages — only this scrolls */}

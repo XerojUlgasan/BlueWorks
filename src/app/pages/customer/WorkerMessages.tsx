@@ -319,7 +319,7 @@ function MessageList({ active, messagesEndRef }: { active: ActiveConvo; messages
       {active.messages.map((m, i) => (
         <div key={i} className={`flex items-end gap-2 ${m.from === "me" ? "justify-end" : "justify-start"}`}>
           {m.from === "them" && (
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mb-4" style={{ background: active.avatarColor }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mb-5" style={{ background: active.avatarColor }}>
               {workerInitials(active.workerName)}
             </div>
           )}

@@ -128,7 +128,10 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
       <div className="shrink-0 px-4 pt-5 pb-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{ background: A }}>
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: "linear-gradient(135deg, #3B82F6, #1B3A6B)" }}
+            >
               <Bot className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -147,7 +150,7 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
         </div>
         <button
           className="w-full py-2.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-          style={{ background: A }}
+          style={{ background: "linear-gradient(135deg, #1D4ED8, #1E3A8A)" }}
           onClick={startNewChat}
         >
           <Plus className="w-4 h-4" /> New Chat
@@ -185,7 +188,7 @@ export default function BlueBotChat({ dark, toggleDark }: { dark: boolean; toggl
         <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-card dark:bg-slate-900" style={{ minHeight: 0, overflow: "hidden" }}>
           {sidebarContent(false)}
         </aside>
-        <div className="flex-1 flex flex-col min-w-0" style={{ minHeight: 0, overflow: "hidden" }}>
+        <div className="flex-1 flex flex-col min-w-0 bg-background dark:bg-slate-950" style={{ minHeight: 0, overflow: "hidden" }}>
           <MessageArea messages={messages} messagesEndRef={messagesEndRef} onNavigate={() => navigate("/app/booking/new")} />
           <InputBar input={input} inputRef={chatInputRef} onInput={setInput} onSend={handleSend} />
         </div>
@@ -224,7 +227,7 @@ function ChatHeader({ onOpenSidebar, onNewChat }: { onOpenSidebar: () => void; o
       <button className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-muted transition-colors" onClick={onOpenSidebar}>
         <History className="w-5 h-5" />
       </button>
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: A }}>
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg, #3B82F6, #1B3A6B)" }}>
         <Bot className="w-5 h-5 text-white" />
       </div>
       <div className="flex-1">
@@ -252,11 +255,11 @@ function MessageArea({ messages, messagesEndRef, onNavigate }: {
   onNavigate: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto min-h-0 p-4 space-y-5" style={{ overscrollBehavior: "contain" }}>
+    <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5 bg-background dark:bg-slate-950" style={{ overscrollBehavior: "contain" }}>
       {messages.map((m, i) => (
         <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "gap-3 items-end"}`}>
           {m.from === "bot" && (
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-1" style={{ background: A }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-5" style={{ background: "linear-gradient(135deg, #3B82F6, #1B3A6B)" }}>
               <Bot className="w-4 h-4 text-white" />
             </div>
           )}
