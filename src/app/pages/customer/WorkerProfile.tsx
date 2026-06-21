@@ -434,7 +434,7 @@ export default function WorkerProfile({ dark, toggleDark }: { dark: boolean; tog
       </div>
 
       {/* Mobile sticky CTA bar — sits above the tab nav (bottom-14) */}
-      <div className="md:hidden fixed bottom-14 left-0 right-0 z-10 bg-card/95 backdrop-blur border-t border-border px-4 py-3 flex gap-3">
+      <div className="md:hidden fixed bottom-14 left-0 right-0 z-10 bg-card/95 backdrop-blur border-t-2 border-border dark:border-slate-700 dark:bg-slate-900 px-4 py-3 flex gap-3">
         <button
           onClick={() => navigate(`/app/chat?worker=${id}`)}
           className="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-border bg-secondary hover:bg-muted transition-colors flex items-center justify-center gap-2"

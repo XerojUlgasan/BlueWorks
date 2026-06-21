@@ -255,7 +255,7 @@ function MessageArea({ messages, messagesEndRef, onNavigate }: {
   onNavigate: () => void;
 }) {
   return (
-    <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5 bg-background dark:bg-transparent" style={{ overscrollBehavior: "contain" }}>
+    <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5 bg-background dark:bg-slate-950" style={{ overscrollBehavior: "contain" }}>
       {messages.map((m, i) => (
         <div key={i} className={`flex ${m.from === "user" ? "justify-end" : "gap-3 items-end"}`}>
           {m.from === "bot" && (
@@ -267,7 +267,7 @@ function MessageArea({ messages, messagesEndRef, onNavigate }: {
             {(m.text || m.extra) && (
               <div
                 className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                  m.from === "user" ? "text-white rounded-br-sm" : "bg-muted dark:bg-white/10 text-foreground rounded-bl-sm"
+                  m.from === "user" ? "text-white rounded-br-sm" : "bg-card dark:bg-slate-800 border border-border rounded-bl-sm"
                 }`}
                 style={m.from === "user" ? { background: A } : {}}
               >

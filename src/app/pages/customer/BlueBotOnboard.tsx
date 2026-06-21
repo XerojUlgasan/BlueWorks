@@ -215,7 +215,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
           {/* ── CHAT view ── */}
           {activeChatIndex !== null && (
             <div
-              className={`flex flex-col bg-background dark:bg-transparent md:flex-1 md:h-full ${
+              className={`flex flex-col bg-background dark:bg-slate-950 md:flex-1 md:h-full ${
                 // mobile only: fixed between top nav and bottom tab bar
                 "max-md:fixed max-md:inset-x-0"
               }`}
@@ -245,7 +245,10 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                 </div>
                 <div>
                   <p className="text-sm font-semibold leading-none">BlueBot</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">AI Assistant · Online</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full inline-block animate-pulse" />
+                    AI Assistant · Online
+                  </p>
                 </div>
                 <div className="flex-1" />
                 <button
@@ -273,7 +276,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
                       {msg.text && (
                         <div
                           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                            msg.from === "user" ? "text-white rounded-br-sm" : "bg-muted dark:bg-white/10 text-foreground rounded-bl-sm"
+                            msg.from === "user" ? "text-white rounded-br-sm" : "bg-card dark:bg-slate-800 border border-border rounded-bl-sm"
                           }`}
                           style={msg.from === "user" ? { background: A } : {}}
                         >
