@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Star, MapPin, Shield, CheckCircle, Clock, FileText, Users, Hammer, ChevronLeft, MessageSquare } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
 import { Badge, StarRating } from "../../components/shared";
@@ -31,6 +31,7 @@ type Tab = typeof TABS[number];
 
 export default function WorkerProfile({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState<Tab>("about");
 
   return (
@@ -186,7 +187,7 @@ export default function WorkerProfile({ dark, toggleDark }: { dark: boolean; tog
                   Book Now
                 </button>
                 <button
-                  onClick={() => navigate("/app/chat")}
+                  onClick={() => navigate(`/app/chat?worker=${id}`)}
                   className="px-5 py-2.5 rounded-xl font-semibold text-sm border border-border bg-secondary hover:bg-muted transition-colors flex items-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" /> Message
@@ -413,7 +414,7 @@ export default function WorkerProfile({ dark, toggleDark }: { dark: boolean; tog
                   Book Now
                 </button>
                 <button
-                  onClick={() => navigate("/app/chat")}
+                  onClick={() => navigate(`/app/chat?worker=${id}`)}
                   className="w-full py-2.5 rounded-xl font-semibold text-sm border border-border bg-secondary hover:bg-muted transition-colors flex items-center justify-center gap-2"
                 >
                   <MessageSquare className="w-4 h-4" /> Message
@@ -435,7 +436,7 @@ export default function WorkerProfile({ dark, toggleDark }: { dark: boolean; tog
       {/* Mobile sticky CTA bar — sits above the tab nav (bottom-14) */}
       <div className="md:hidden fixed bottom-14 left-0 right-0 z-10 bg-card/95 backdrop-blur border-t border-border px-4 py-3 flex gap-3">
         <button
-          onClick={() => navigate("/app/chat")}
+          onClick={() => navigate(`/app/chat?worker=${id}`)}
           className="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-border bg-secondary hover:bg-muted transition-colors flex items-center justify-center gap-2"
         >
           <MessageSquare className="w-4 h-4" /> Message
