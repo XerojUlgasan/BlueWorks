@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut } from "lucide-react";
+import { ArrowRight, Bot, Sparkles, Plus, Trash2, PanelLeftClose, PanelLeft, LogOut, Send } from "lucide-react";
 import { Logo } from "../../components/shared";
 import { CustomerNav } from "../../components/shared/Nav";
 import { useCurrentUser } from "../../hooks/useCurrentUser";
@@ -222,7 +222,7 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               style={{ top: "62px", bottom: "56px" }}
             >
               {/* Chat header */}
-              <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
+              <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-card dark:bg-slate-900 shadow-sm">
                 <button
                   className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:bg-black/5 dark:hover:bg-white/10 transition-colors shrink-0"
                   onClick={() => setMobileSidebarOpen(true)}
@@ -258,26 +258,31 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               </div>
 
               {/* Messages — only this scrolls */}
-              <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3">
+              <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-5" style={{ overscrollBehavior: "contain" }}>
                 {chatHistory[activeChatIndex]?.messages.map((msg, i) => (
-                  <div key={i} className={`flex items-end ${msg.from === "user" ? "justify-end" : "gap-3"}`}>
+                  <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "gap-3 items-end"}`}>
                     {msg.from === "bot" && (
                       <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 mb-5"
                         style={{ background: "linear-gradient(135deg, #3B82F6, #1B3A6B)" }}
                       >
-                        <Bot className="w-3.5 h-3.5 text-white" />
+                        <Bot className="w-4 h-4 text-white" />
                       </div>
                     )}
-                    <div
-                      className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        msg.from === "user"
-                          ? "text-white rounded-br-sm"
-                          : "bg-muted dark:bg-white/10 text-foreground rounded-bl-sm"
-                      }`}
-                      style={msg.from === "user" ? { background: A } : {}}
-                    >
-                      {msg.text}
+                    <div className={`${msg.from === "user" ? "max-w-[75%] md:max-w-md" : "max-w-[82%] md:max-w-lg"} space-y-1`}>
+                      {msg.text && (
+                        <div
+                          className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                            msg.from === "user" ? "text-white rounded-br-sm" : "bg-muted dark:bg-white/10 text-foreground rounded-bl-sm"
+                          }`}
+                          style={msg.from === "user" ? { background: A } : {}}
+                        >
+                          {msg.text}
+                        </div>
+                      )}
+                      <p className={`text-xs text-muted-foreground px-1 ${msg.from === "user" ? "text-right" : ""}`}>
+                        {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -285,34 +290,31 @@ export default function BlueBotOnboard({ dark, toggleDark }: { dark: boolean; to
               </div>
 
               {/* Input */}
-              <div className="shrink-0 px-4 py-3 border-t border-border bg-card">
-                <div className="flex gap-2">
-                  <textarea
-                    ref={chatInputRef}
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={handleChatKeyDown}
-                    placeholder="Continue the conversation..."
-                    rows={1}
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-card text-sm focus:outline-none resize-none
-                      text-gray-800 placeholder:text-gray-400 dark:text-white dark:placeholder:text-blue-200/35"
-                    style={{ maxHeight: "80px", overflowY: "auto" }}
-                    onInput={(e) => {
-                      const el = e.currentTarget;
-                      el.style.height = "auto";
-                      el.style.height = `${Math.min(el.scrollHeight, 80)}px`;
-                    }}
-                  />
+              <div className="shrink-0 px-3 py-3 border-t border-border bg-card dark:bg-slate-900">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+                    <textarea
+                      ref={chatInputRef}
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={handleChatKeyDown}
+                      placeholder="Continue the conversation..."
+                      rows={1}
+                      className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground resize-none leading-5"
+                      style={{ maxHeight: "80px", overflowY: "auto" }}
+                    />
+                  </div>
                   <button
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={handleChatSend}
                     disabled={!chatInput.trim()}
-                    className="px-4 py-2 rounded-xl text-white text-sm font-semibold shrink-0 transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95"
+                    className="p-2.5 rounded-xl text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 active:scale-95 shrink-0"
                     style={{ background: A }}
                   >
-                    Send
+                    <Send className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">BlueBot can make mistakes. Please verify important information.</p>
+                <p className="text-center text-xs text-muted-foreground pb-1 pt-2">BlueBot can make mistakes. Always verify worker credentials.</p>
               </div>
             </div>
           )}
