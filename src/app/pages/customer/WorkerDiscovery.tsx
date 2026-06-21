@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown, Users, ChevronUp, RotateCcw } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown, Users, ChevronUp, RotateCcw, Crosshair, Navigation } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CustomerNav } from "../../components/shared/Nav";
@@ -38,6 +38,79 @@ const SHEET_FULL_PX      = typeof window !== "undefined"
 
 const SNAP_POINTS = ["collapsed", "peek", "mid", "full"] as const;
 type SnapPoint = typeof SNAP_POINTS[number];
+type LocationModal = "closed" | "open" | "picking" | "confirm";
+
+function ConfirmPinModal({ latlng, onConfirm, onCancel }: {
+  latlng: L.LatLng | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  if (!latlng) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-card dark:bg-slate-800 rounded-2xl shadow-2xl border border-border p-5 w-72 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="26" viewBox="0 0 28 36"><circle cx="14" cy="14" r="12" fill="#ef4444" stroke="white" strokeWidth="2"/><polygon points="10,24 18,24 14,34" fill="#ef4444"/><circle cx="14" cy="14" r="5" fill="white"/></svg>
+          <p className="text-sm font-bold">Confirm Location</p>
+        </div>
+        <p className="text-xs text-muted-foreground">Pin this as your location?</p>
+        <div className="bg-muted rounded-xl px-3 py-2 text-xs font-mono text-muted-foreground break-all">
+          {latlng.lat.toFixed(5)}, {latlng.lng.toFixed(5)}
+        </div>
+        <div className="flex gap-2 pt-1">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors">Back</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-opacity" style={{ background: "#ef4444" }}>Confirm</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PinpointModal({ state, onGPS, onManual, onClose }: {
+  state: LocationModal;
+  onGPS: () => void;
+  onManual: () => void;
+  onClose: () => void;
+}) {
+  if (state !== "open") return null;
+  return (
+    <div
+      className="fixed inset-0 z-[2000] flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.45)" }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-card dark:bg-slate-800 rounded-2xl shadow-2xl border border-border p-5 w-72 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-sm font-bold">Set Your Location</p>
+        <p className="text-xs text-muted-foreground">How would you like to set your pinpoint?</p>
+        <button
+          onClick={onGPS}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-sm font-medium"
+        >
+          <Navigation className="w-4 h-4 text-blue-500" />
+          Use GPS / Device Location
+        </button>
+        <button
+          onClick={onManual}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+        >
+          <MapPin className="w-4 h-4 text-red-500" />
+          Mark Manually on Map
+        </button>
+        <button onClick={onClose} className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors pt-1">Cancel</button>
+      </div>
+    </div>
+  );
+}
 
 function workerInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -67,7 +140,32 @@ function MapResizer() {
   return null;
 }
 
-function WorkerMap({ onSelectWorker }: { onSelectWorker: (id: number) => void }) {
+function MapCenterTracker({ onChange, offsetY }: { onChange: (latlng: L.LatLng) => void; offsetY: number }) {
+  const map = useMapEvents({
+    move()    { onChange(map.containerPointToLatLng([map.getSize().x / 2, map.getSize().y / 2 - offsetY])); },
+    moveend() { onChange(map.containerPointToLatLng([map.getSize().x / 2, map.getSize().y / 2 - offsetY])); },
+  });
+  useEffect(() => {
+    onChange(map.containerPointToLatLng([map.getSize().x / 2, map.getSize().y / 2 - offsetY]));
+  }, [offsetY]);
+  return null;
+}
+
+const pinIcon = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"><circle cx="14" cy="14" r="12" fill="#ef4444" stroke="white" stroke-width="2"/><polygon points="10,24 18,24 14,34" fill="#ef4444"/><circle cx="14" cy="14" r="5" fill="white"/></svg>`,
+  className: "",
+  iconSize: [28, 36],
+  iconAnchor: [14, 34],
+  popupAnchor: [0, -36],
+});
+
+function WorkerMap({ onSelectWorker, pinPos, pickingPin, onCenterChange, pickOffsetY = 0 }: {
+  onSelectWorker: (id: number) => void;
+  pinPos: L.LatLng | null;
+  pickingPin: boolean;
+  onCenterChange: (latlng: L.LatLng) => void;
+  pickOffsetY?: number;
+}) {
   const philippinesBounds: L.LatLngBoundsExpression = [[4.5, 116.0], [21.5, 127.0]];
   return (
     <MapContainer
@@ -76,11 +174,17 @@ function WorkerMap({ onSelectWorker }: { onSelectWorker: (id: number) => void })
       minZoom={6}
       maxBounds={philippinesBounds}
       maxBoundsViscosity={1.0}
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "100%", cursor: pickingPin ? "crosshair" : undefined }}
       zoomControl={false}
     >
       <TileLayer attribution="" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       <MapResizer />
+      {pickingPin && <MapCenterTracker onChange={onCenterChange} offsetY={pickOffsetY} />}
+      {pinPos && (
+        <Marker position={pinPos} icon={pinIcon}>
+          <Popup>📍 Your pinned location</Popup>
+        </Marker>
+      )}
       <Marker position={MAP_CENTER} icon={userIcon}>
         <Popup>You are here</Popup>
       </Marker>
@@ -169,22 +273,24 @@ function PanelContent({
               {workers.length} worker{workers.length !== 1 ? "s" : ""} found nearby
             </p>
           </div>
-          <button
-            onClick={onToggleFilters}
-            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            Filters
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`} />
-          </button>
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
-            title="Refresh"
-          >
-            <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onToggleFilters}
+              className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Filters
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+            </button>
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+              title="Refresh"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
 
         <div className="relative">
@@ -326,12 +432,35 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
   const navigate = useNavigate();
   const [search, setSearch]                 = useState("");
   const [verifiedOnly, setVerifiedOnly]     = useState(true);
-  const [showFilters, setShowFilters]       = useState(true);
+  const [showFilters, setShowFilters]       = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [maxDist, setMaxDist]               = useState<number | null>(null);
   const [sheetHeightPx, setSheetHeightPx]   = useState(SHEET_PEEK_PX);
   const [snapPoint, setSnapPoint]           = useState<SnapPoint>("peek");
   const [isRefreshing, setIsRefreshing]     = useState(false);
+  const [pinPos, setPinPos]                 = useState<L.LatLng | null>(null);
+  const [locationModal, setLocationModal]   = useState<LocationModal>("closed");
+  const [draftCenter, setDraftCenter]       = useState<L.LatLng | null>(null);
+  const [pendingPin, setPendingPin]         = useState<L.LatLng | null>(null);
+
+  function confirmPin() {
+    if (pendingPin) setPinPos(pendingPin);
+    setPendingPin(null);
+    setLocationModal("closed");
+  }
+
+  function handleGPS() {
+    setLocationModal("closed");
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setPendingPin(L.latLng(pos.coords.latitude, pos.coords.longitude)); setLocationModal("confirm"); },
+      (err) => alert(`Could not get your location: ${err.message}`),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
 
   function handleRefresh() {
     setIsRefreshing(true);
@@ -427,12 +556,14 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
     const dragDelta = currentHeightRef.current - touchStartH.current;
     const THRESHOLD = 40;
     const idx = SNAP_POINTS.indexOf(snapPoint);
-    if (dragDelta > THRESHOLD && idx < SNAP_POINTS.length - 1) {
+    // In picking mode, only allow collapsed/peek
+    const maxIdx = locationModal === "picking" ? 1 : SNAP_POINTS.length - 1;
+    if (dragDelta > THRESHOLD && idx < maxIdx) {
       snapSheet(SNAP_POINTS[idx + 1]);
     } else if (dragDelta < -THRESHOLD && idx > 0) {
       snapSheet(SNAP_POINTS[idx - 1]);
     } else {
-      snapSheet(snapPoint);
+      snapSheet(locationModal === "picking" ? SNAP_POINTS[Math.min(idx, 1)] : snapPoint);
     }
   }
 
@@ -457,8 +588,50 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
         <aside className="w-96 shrink-0 flex flex-col border-r border-border overflow-hidden bg-card dark:bg-slate-900 dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.06)]">
           <PanelContent {...panelProps} />
         </aside>
-        <div className="flex-1 h-full">
-          <WorkerMap onSelectWorker={(id) => navigate(`/app/worker/${id}`)} />
+        <div className="flex-1 h-full relative">
+          <WorkerMap
+            onSelectWorker={(id) => navigate(`/app/worker/${id}`)}
+            pinPos={pinPos}
+            pickingPin={locationModal === "picking"}
+            onCenterChange={setDraftCenter}
+          />
+          {locationModal !== "picking" && (
+            <button
+              onClick={() => setLocationModal(locationModal === "closed" ? "open" : "closed")}
+              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-border shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
+            >
+              <Crosshair className="w-3.5 h-3.5" />
+              {pinPos ? "Update Location" : "Pinpoint Location"}
+            </button>
+          )}
+          <PinpointModal state={locationModal} onGPS={handleGPS} onManual={() => { setDraftCenter(null); setLocationModal("picking"); }} onClose={() => setLocationModal("closed")} />
+          {locationModal === "picking" && (
+            <>
+              {/* Crosshair overlay */}
+              <div className="absolute inset-0 z-[1000] pointer-events-none flex items-center justify-center" style={{ marginTop: "-18px" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))" }}>
+                  <circle cx="14" cy="14" r="12" fill="#ef4444" stroke="white" strokeWidth="2"/>
+                  <polygon points="10,24 18,24 14,34" fill="#ef4444"/>
+                  <circle cx="14" cy="14" r="5" fill="white"/>
+                </svg>
+              </div>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex gap-2">
+                <button
+                  onClick={() => setLocationModal("closed")}
+                  className="px-5 py-2.5 rounded-xl bg-card dark:bg-slate-800 border border-border text-sm font-semibold shadow-lg hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { if (draftCenter) { setPendingPin(draftCenter); setLocationModal("confirm"); } }}
+                  className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg hover:opacity-90 transition-opacity"
+                  style={{ background: "#ef4444" }}
+                >
+                  Pin Here
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -467,8 +640,66 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
 
         {/* Map — fixed so it fills the screen regardless of outer wrapper height */}
         <div className="fixed inset-0 top-[57px]">
-          <WorkerMap onSelectWorker={(id) => navigate(`/app/worker/${id}`)} />
+          <WorkerMap
+            onSelectWorker={(id) => navigate(`/app/worker/${id}`)}
+            pinPos={pinPos}
+            pickingPin={locationModal === "picking"}
+            onCenterChange={setDraftCenter}
+            pickOffsetY={Math.round((sheetHeightPx + 56 + 52) / 2)}
+          />
+          {locationModal === "picking" && (
+            <div
+              className="absolute left-0 right-0 top-0 pointer-events-none z-[1000] flex items-center justify-center"
+              style={{ bottom: sheetHeightPx + 56 + 52 }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))" }}>
+                <circle cx="14" cy="14" r="12" fill="#ef4444" stroke="white" strokeWidth="2"/>
+                <polygon points="10,24 18,24 14,34" fill="#ef4444"/>
+                <circle cx="14" cy="14" r="5" fill="white"/>
+              </svg>
+            </div>
+          )}
         </div>
+
+        {/* Pinpoint button — centered just above the sheet */}
+        {locationModal !== "picking" && (
+          <button
+            onClick={() => setLocationModal(locationModal === "closed" ? "open" : "closed")}
+            className="fixed left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-border shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
+            style={{ bottom: sheetHeightPx + 56 + 8 }}
+          >
+            <Crosshair className="w-3.5 h-3.5" />
+            {pinPos ? "Update Location" : "Pinpoint Location"}
+          </button>
+        )}
+
+        {/* Confirm modal */}
+        <ConfirmPinModal latlng={pendingPin} onConfirm={confirmPin} onCancel={() => { setPendingPin(null); setLocationModal("picking"); }} />
+
+        {/* Modal — rendered here so it sits above sheet z-10 and nav */}
+        <PinpointModal state={locationModal} onGPS={handleGPS} onManual={() => { setDraftCenter(null); snapSheet("collapsed"); setLocationModal("picking"); }} onClose={() => setLocationModal("closed")} />
+
+        {/* Pin/Cancel buttons — float just above the sheet when in picking mode */}
+        {locationModal === "picking" && (
+          <div
+            className="fixed left-0 right-0 z-20 flex justify-center gap-2 px-4"
+            style={{ bottom: sheetHeightPx + 56 + 8 }}
+          >
+            <button
+              onClick={() => setLocationModal("closed")}
+              className="px-5 py-2.5 rounded-xl bg-card dark:bg-slate-800 border border-border text-sm font-semibold shadow-lg hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => { if (draftCenter) { setPendingPin(draftCenter); setLocationModal("confirm"); } }}
+              className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg hover:opacity-90 transition-opacity"
+              style={{ background: "#ef4444" }}
+            >
+              Pin Here
+            </button>
+          </div>
+        )}
 
         {/* Bottom sheet — fixed above the tab bar (56px), capped so it never overlaps the nav */}
         <div
