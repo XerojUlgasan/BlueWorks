@@ -598,7 +598,7 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
           {locationModal !== "picking" && (
             <button
               onClick={() => setLocationModal(locationModal === "closed" ? "open" : "closed")}
-              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-border shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
+              className="absolute top-3 right-3 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-slate-300 dark:border-slate-600 shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
             >
               <Crosshair className="w-3.5 h-3.5" />
               {pinPos ? "Update Location" : "Pinpoint Location"}
@@ -667,7 +667,7 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
         {locationModal !== "picking" && (
           <button
             onClick={() => setLocationModal(locationModal === "closed" ? "open" : "closed")}
-            className="fixed left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-border shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
+            className="fixed left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-1.5 bg-card dark:bg-slate-800 border border-slate-300 dark:border-slate-600 shadow-md rounded-xl px-3 py-2 text-xs font-semibold hover:border-blue-400 transition-colors"
             style={{ bottom: sheetHeightPx + 56 + 8 }}
           >
             <Crosshair className="w-3.5 h-3.5" />
