@@ -604,10 +604,8 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
               {pinPos ? "Update Location" : "Pinpoint Location"}
             </button>
           )}
-          <PinpointModal state={locationModal} onGPS={handleGPS} onManual={() => { setDraftCenter(null); setLocationModal("picking"); }} onClose={() => setLocationModal("closed")} />
           {locationModal === "picking" && (
             <>
-              {/* Crosshair overlay */}
               <div className="absolute inset-0 z-[1000] pointer-events-none flex items-center justify-center" style={{ marginTop: "-18px" }}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.4))" }}>
                   <circle cx="14" cy="14" r="12" fill="#ef4444" stroke="white" strokeWidth="2"/>
@@ -634,6 +632,10 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
           )}
         </div>
       </div>
+
+      {/* Shared modals — rendered at top level so no stacking context traps them */}
+      <PinpointModal state={locationModal} onGPS={handleGPS} onManual={() => { setDraftCenter(null); snapSheet("collapsed"); setLocationModal("picking"); }} onClose={() => setLocationModal("closed")} />
+      <ConfirmPinModal latlng={pendingPin} onConfirm={confirmPin} onCancel={() => { setPendingPin(null); setLocationModal("picking"); }} />
 
       {/* ── Mobile layout: full-screen map + bottom sheet ── */}
       <div className="md:hidden flex-1 relative overflow-hidden">
@@ -672,12 +674,6 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
             {pinPos ? "Update Location" : "Pinpoint Location"}
           </button>
         )}
-
-        {/* Confirm modal */}
-        <ConfirmPinModal latlng={pendingPin} onConfirm={confirmPin} onCancel={() => { setPendingPin(null); setLocationModal("picking"); }} />
-
-        {/* Modal — rendered here so it sits above sheet z-10 and nav */}
-        <PinpointModal state={locationModal} onGPS={handleGPS} onManual={() => { setDraftCenter(null); snapSheet("collapsed"); setLocationModal("picking"); }} onClose={() => setLocationModal("closed")} />
 
         {/* Pin/Cancel buttons — float just above the sheet when in picking mode */}
         {locationModal === "picking" && (
