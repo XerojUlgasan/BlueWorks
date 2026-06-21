@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router";
+import { useSearchParams, useNavigate, useLocation } from "react-router";
 import { Search, Send, CheckCheck, ArrowLeft, Image, Camera, X, Info } from "lucide-react";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A } from "../../constants";
@@ -53,6 +53,11 @@ function now() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+// Nav height (px) — must match CustomerNav's rendered height
+const NAV_H  = 57;
+// Mobile bottom tab bar height (px)
+const TAB_H  = 56;
+
 export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -65,15 +70,32 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
   const [input, setInput]                 = useState("");
   const [imagePreview, setImagePreview]   = useState<string | null>(null);
 
-  const messagesEndRef  = useRef<HTMLDivElement>(null);
-  const fileInputRef    = useRef<HTMLInputElement>(null);
-  const cameraInputRef  = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef   = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const chatInputRef   = useRef<HTMLTextAreaElement>(null);
 
   const active = conversations.find((c) => c.id === activeId)!;
+  const location = useLocation();
+
+  // When the user taps the Messages tab while already on this page,
+  // the route key changes — use that to reset back to the list view.
+  useEffect(() => {
+    if (!workerParam) setMobileShowChat(false);
+  }, [location.key]);
+
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const behavior = isFirstMount.current ? "instant" : "smooth";
+    isFirstMount.current = false;
+    messagesEndRef.current?.scrollIntoView({ behavior });
   }, [active.messages]);
+
+  // Reset instant scroll flag when switching conversations
+  useEffect(() => {
+    isFirstMount.current = true;
+  }, [activeId]);
 
   function handleSend() {
     const hasText = input.trim();
@@ -96,18 +118,26 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100dvh" }} className="bg-background">
+    <>
+      {/*
+        On mobile the CustomerNav uses `sticky top-0` which means it participates
+        in the document flow. When the virtual keyboard opens the browser shrinks
+        the visual viewport, causing the sticky nav to scroll out of view.
+
+        Fix: render the nav normally (so desktop still works), then on mobile
+        duplicate just the chat-header concern by fixing the ENTIRE panel area
+        with `position: fixed` starting below the nav. Because the panel is
+        fixed it is immune to keyboard-driven viewport changes.
+      */}
       <CustomerNav dark={dark} toggleDark={toggleDark} />
 
-      {/* Main row — fills exact remaining height, no overflow */}
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
-
-        {/* ── Conversation list ── */}
-        <aside
-          style={{ flexDirection: "column", minHeight: 0 }}
-          className={`${mobileShowChat ? "hidden" : "flex"} md:flex w-full md:w-80 shrink-0 border-r border-border bg-card dark:bg-slate-900`}
-        >
-          {/* Header — fixed, never scrolls */}
+      {/* ── Desktop layout: normal flow below the sticky nav ── */}
+      <div
+        className="hidden md:flex"
+        style={{ height: `calc(100vh - ${NAV_H}px)`, overflow: "hidden" }}
+      >
+        {/* Conversation list */}
+        <aside className="flex flex-col w-80 shrink-0 border-r border-border bg-card dark:bg-slate-900 overflow-hidden">
           <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border">
             <h2 className="font-bold text-base mb-3">Messages</h2>
             <div className="relative">
@@ -118,16 +148,14 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
               />
             </div>
           </div>
-
-          {/* Scrollable list */}
-          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }} className="pb-14 md:pb-0">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {conversations.map((c) => {
               const isActive = c.id === activeId;
               const last = c.messages[c.messages.length - 1];
               return (
                 <button
                   key={c.id}
-                  onClick={() => { setActiveId(c.id); setMobileShowChat(true); }}
+                  onClick={() => setActiveId(c.id)}
                   className={`w-full text-left px-4 py-3.5 border-b border-border transition-colors flex items-center gap-3 ${
                     isActive ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted/60 dark:hover:bg-white/5"
                   }`}
@@ -146,99 +174,233 @@ export default function WorkerMessages({ dark, toggleDark }: { dark: boolean; to
           </div>
         </aside>
 
-        {/* ── Chat window ── */}
-        <div
-          style={{ flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}
-          className={`${mobileShowChat ? "flex" : "hidden"} md:flex bg-background dark:bg-slate-950`}
-        >
-          {/* Chat header — fixed, never scrolls */}
-          <div className="shrink-0 px-4 py-3 border-b border-border flex items-center gap-3 bg-card dark:bg-slate-900 shadow-sm">
-            <button onClick={() => setMobileShowChat(false)} className="md:hidden p-1.5 -ml-1 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm" style={{ background: active.avatarColor }}>
-              {workerInitials(active.workerName)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm truncate">{active.workerName}</p>
-              <p className="text-xs text-muted-foreground truncate">{active.skill} · {active.jobContext}</p>
-            </div>
-            <button onClick={() => navigate(`/app/worker/${active.id}`)} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0" title="View profile">
-              <Info className="w-5 h-5" />
-            </button>
-          </div>
+        {/* Chat window */}
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-background dark:bg-slate-950">
+          <ChatHeader active={active} onBack={() => {}} showBack={false} onViewProfile={() => navigate(`/app/worker/${active.id}`)} />
+          <MessageList active={active} messagesEndRef={messagesEndRef} />
+          <InputBar
+            input={input}
+            imagePreview={imagePreview}
+            workerName={active.workerName}
+            onInput={setInput}
+            onSend={handleSend}
+            onClearPreview={() => setImagePreview(null)}
+            onPickFile={() => fileInputRef.current?.click()}
+            onPickCamera={() => cameraInputRef.current?.click()}
+            inputRef={chatInputRef}
+            fileInputRef={fileInputRef}
+            cameraInputRef={cameraInputRef}
+            onImageFile={handleImageFile}
+          />
+        </div>
+      </div>
 
-          {/* Scrollable messages */}
-          <div style={{ flex: 1, overflowY: "auto", minHeight: 0, overscrollBehavior: "contain" }} className="px-4 py-4 space-y-3 pb-28 md:pb-4">
-            {active.messages.map((m, i) => (
-              <div key={i} className={`flex items-end gap-2 ${m.from === "me" ? "justify-end" : "justify-start"}`}>
-                {m.from === "them" && (
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mb-4" style={{ background: active.avatarColor }}>
-                    {workerInitials(active.workerName)}
-                  </div>
-                )}
-                <div className="max-w-[72%] md:max-w-md space-y-1">
-                  {m.image && <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-52 object-cover" />}
-                  {m.text && (
-                    <div
-                      className={`px-4 py-2.5 text-sm leading-relaxed ${
-                        m.from === "me"
-                          ? "text-white rounded-2xl rounded-br-sm"
-                          : "bg-card dark:bg-slate-800 border border-border rounded-2xl rounded-bl-sm"
-                      }`}
-                      style={m.from === "me" ? { background: A } : {}}
-                    >
-                      {m.text}
-                    </div>
-                  )}
-                  <div className={`flex items-center gap-1 text-[10px] text-muted-foreground px-1 ${m.from === "me" ? "justify-end" : ""}`}>
-                    {m.time}{m.from === "me" && <CheckCheck className="w-3 h-3 text-blue-400" />}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input bar — fixed on mobile, inline on desktop */}
-          <div className="shrink-0 fixed bottom-14 left-0 right-0 md:relative md:bottom-auto bg-card dark:bg-slate-900 border-t border-border">
-            {imagePreview && (
-              <div className="px-4 pt-3">
-                <div className="relative inline-block">
-                  <img src={imagePreview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-border" />
-                  <button onClick={() => setImagePreview(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center">
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            )}
-            <div className="px-3 py-3 flex items-center gap-2">
-              <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
-                <Image className="w-5 h-5" />
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
-
-              <button onClick={() => cameraInputRef.current?.click()} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
-                <Camera className="w-5 h-5" />
-              </button>
-              <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
-
-              <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+      {/* ── Mobile layout: fully fixed panel, immune to keyboard resize ── */}
+      <div
+        className="md:hidden fixed left-0 right-0 bottom-0 flex"
+        style={{ top: NAV_H, bottom: TAB_H }}
+      >
+        {/* Conversation list — shown when no chat is open */}
+        {!mobileShowChat && (
+          <div className="flex flex-col w-full bg-card dark:bg-slate-900 overflow-hidden">
+            <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border">
+              <h2 className="font-bold text-base mb-3">Messages</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder={`Message ${active.workerName}...`}
-                  className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground"
+                  placeholder="Search conversations..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow placeholder:text-muted-foreground"
                 />
               </div>
+            </div>
+            <div className="flex-1 overflow-y-auto min-h-0">
+              {conversations.map((c) => {
+                const isActive = c.id === activeId;
+                const last = c.messages[c.messages.length - 1];
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => { setActiveId(c.id); setMobileShowChat(true); }}
+                    className={`w-full text-left px-4 py-3.5 border-b border-border transition-colors flex items-center gap-3 ${
+                      isActive ? "bg-blue-50 dark:bg-blue-900/20" : "hover:bg-muted/60 dark:hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm" style={{ background: c.avatarColor }}>
+                      {workerInitials(c.workerName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold truncate ${isActive ? "text-blue-600 dark:text-blue-400" : ""}`}>{c.workerName}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{last.image ? "📷 Photo" : last.text}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{last.time.split(",")[0]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-              <button onClick={handleSend} disabled={!input.trim() && !imagePreview} className="p-2.5 rounded-xl text-white transition-all disabled:opacity-40 hover:opacity-90 active:scale-95 shrink-0" style={{ background: A }}>
-                <Send className="w-4 h-4" />
-              </button>
+        {/* Chat window — shown when a conversation is open */}
+        {mobileShowChat && (
+          <div className="flex flex-col w-full overflow-hidden bg-background dark:bg-slate-950">
+            <ChatHeader
+              active={active}
+              onBack={() => setMobileShowChat(false)}
+              showBack
+              onViewProfile={() => navigate(`/app/worker/${active.id}`)}
+            />
+            <MessageList active={active} messagesEndRef={messagesEndRef} />
+            <InputBar
+              input={input}
+              imagePreview={imagePreview}
+              workerName={active.workerName}
+              onInput={setInput}
+              onSend={handleSend}
+              onClearPreview={() => setImagePreview(null)}
+              onPickFile={() => fileInputRef.current?.click()}
+              onPickCamera={() => cameraInputRef.current?.click()}
+              inputRef={chatInputRef}
+              fileInputRef={fileInputRef}
+              cameraInputRef={cameraInputRef}
+              onImageFile={handleImageFile}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Shared hidden file inputs */}
+      <input ref={fileInputRef}   type="file" accept="image/*"                    className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageFile(e.target.files[0])} />
+    </>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+interface ActiveConvo {
+  id: number;
+  workerName: string;
+  skill: string;
+  avatarColor: string;
+  jobContext: string;
+  messages: Message[];
+}
+
+function ChatHeader({ active, onBack, showBack, onViewProfile }: {
+  active: ActiveConvo;
+  onBack: () => void;
+  showBack: boolean;
+  onViewProfile: () => void;
+}) {
+  return (
+    <div className="shrink-0 px-4 py-3 border-b border-border flex items-center gap-3 bg-card dark:bg-slate-900 shadow-sm">
+      {showBack && (
+        <button onClick={onBack} className="p-1.5 -ml-1 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      )}
+      <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm" style={{ background: active.avatarColor }}>
+        {workerInitials(active.workerName)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm truncate">{active.workerName}</p>
+        <p className="text-xs text-muted-foreground truncate">{active.skill} · {active.jobContext}</p>
+      </div>
+      <button onClick={onViewProfile} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0" title="View profile">
+        <Info className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
+
+function MessageList({ active, messagesEndRef }: { active: ActiveConvo; messagesEndRef: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-3" style={{ overscrollBehavior: "contain" }}>
+      {active.messages.map((m, i) => (
+        <div key={i} className={`flex items-end gap-2 ${m.from === "me" ? "justify-end" : "justify-start"}`}>
+          {m.from === "them" && (
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 mb-4" style={{ background: active.avatarColor }}>
+              {workerInitials(active.workerName)}
+            </div>
+          )}
+          <div className="max-w-[72%] md:max-w-md space-y-1">
+            {m.image && <img src={m.image} alt="sent" className="rounded-2xl max-w-full max-h-52 object-cover" />}
+            {m.text && (
+              <div
+                className={`px-4 py-2.5 text-sm leading-relaxed ${
+                  m.from === "me"
+                    ? "text-white rounded-2xl rounded-br-sm"
+                    : "bg-card dark:bg-slate-800 border border-border rounded-2xl rounded-bl-sm"
+                }`}
+                style={m.from === "me" ? { background: A } : {}}
+              >
+                {m.text}
+              </div>
+            )}
+            <div className={`flex items-center gap-1 text-[10px] text-muted-foreground px-1 ${m.from === "me" ? "justify-end" : ""}`}>
+              {m.time}{m.from === "me" && <CheckCheck className="w-3 h-3 text-blue-400" />}
             </div>
           </div>
         </div>
+      ))}
+      <div ref={messagesEndRef} />
+    </div>
+  );
+}
+
+function InputBar({ input, imagePreview, workerName, onInput, onSend, onClearPreview, onPickFile, onPickCamera, inputRef, fileInputRef, cameraInputRef, onImageFile }: {
+  input: string;
+  imagePreview: string | null;
+  workerName: string;
+  onInput: (v: string) => void;
+  onSend: () => void;
+  onClearPreview: () => void;
+  onPickFile: () => void;
+  onPickCamera: () => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  cameraInputRef: React.RefObject<HTMLInputElement | null>;
+  onImageFile: (f: File) => void;
+}) {
+  return (
+    <div className="shrink-0 bg-card dark:bg-slate-900 border-t border-border">
+      {imagePreview && (
+        <div className="px-4 pt-3">
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="preview" className="h-20 w-20 object-cover rounded-xl border border-border" />
+            <button onClick={onClearPreview} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
+      <div className="px-3 py-3 flex items-center gap-2">
+        <button onClick={onPickFile} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+          <Image className="w-5 h-5" />
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && onImageFile(e.target.files[0])} />
+
+        <button onClick={onPickCamera} className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
+          <Camera className="w-5 h-5" />
+        </button>
+        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && onImageFile(e.target.files[0])} />
+
+        <div className="flex-1 flex items-center bg-input-background rounded-xl px-4 py-2 border border-border focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-transparent transition-all">
+          <textarea
+            ref={inputRef}
+            rows={1}
+            value={input}
+            onChange={(e) => onInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+            placeholder={`Message ${workerName}...`}
+            className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground resize-none leading-5"
+            style={{ maxHeight: 80, overflowY: "auto" }}
+          />
+        </div>
+
+        <button onMouseDown={(e) => e.preventDefault()} onClick={onSend} disabled={!input.trim() && !imagePreview} className="p-2.5 rounded-xl text-white transition-all disabled:opacity-40 hover:opacity-90 active:scale-95 shrink-0" style={{ background: A }}>
+          <Send className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
