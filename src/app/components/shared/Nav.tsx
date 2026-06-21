@@ -62,7 +62,7 @@ export function CustomerNav({ dark, toggleDark, transparent = false }: { dark: b
           ? "fixed top-0 left-0 right-0 z-50"
           : "sticky top-0 z-50 bg-card dark:bg-background border-b border-border"
       } px-4 md:px-6 py-3 flex items-center gap-4`}>
-        <button onClick={() => navigate("/")}><Logo /></button>
+        <button onClick={() => navigate("/app/home")}><Logo /></button>
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-1 ml-4 flex-1">
