@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown, Users, ChevronUp } from "lucide-react";
+import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown, Users, ChevronUp, RotateCcw } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -114,6 +114,26 @@ function WorkerMap({ onSelectWorker }: { onSelectWorker: (id: number) => void })
   );
 }
 
+function WorkerCardSkeleton() {
+  return (
+    <div className="w-full bg-background dark:bg-white/5 rounded-2xl border border-border p-4 animate-pulse">
+      <div className="flex items-start gap-3">
+        <div className="w-12 h-12 rounded-xl bg-muted shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-3.5 bg-muted rounded-full w-32" />
+          <div className="h-3 bg-muted rounded-full w-20" />
+          <div className="flex gap-2 mt-1">
+            <div className="h-3 bg-muted rounded-full w-10" />
+            <div className="h-3 bg-muted rounded-full w-14" />
+            <div className="h-3 bg-muted rounded-full w-12" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 h-8 bg-muted rounded-xl" />
+    </div>
+  );
+}
+
 // ─── Desktop panel (filter header + worker list) ───────────────────────────────
 
 interface PanelContentProps {
@@ -129,12 +149,15 @@ interface PanelContentProps {
   onToggleFilters: () => void;
   workers: typeof WORKERS;
   onWorkerClick: (id: number) => void;
+  isRefreshing: boolean;
+  onRefresh: () => void;
 }
 
 function PanelContent({
   search, onSearch, selectedSkills, onToggleSkill,
   maxDist, onSetMaxDist, verifiedOnly, onToggleVerified,
   showFilters, onToggleFilters, workers, onWorkerClick,
+  isRefreshing, onRefresh,
 }: PanelContentProps) {
   return (
     <>
@@ -153,6 +176,14 @@ function PanelContent({
             <SlidersHorizontal className="w-3.5 h-3.5" />
             Filters
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+          </button>
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+            title="Refresh"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
           </button>
         </div>
 
@@ -230,7 +261,9 @@ function PanelContent({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
-        {workers.map((w) => (
+        {isRefreshing
+          ? Array.from({ length: 3 }).map((_, i) => <WorkerCardSkeleton key={i} />)
+          : workers.map((w) => (
           <button
             key={w.id}
             onClick={() => onWorkerClick(w.id)}
@@ -275,7 +308,7 @@ function PanelContent({
           </button>
         ))}
 
-        {workers.length === 0 && (
+        {!isRefreshing && workers.length === 0 && (
           <div className="text-center py-16 text-muted-foreground">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">No workers found</p>
@@ -298,6 +331,12 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
   const [maxDist, setMaxDist]               = useState<number | null>(null);
   const [sheetHeightPx, setSheetHeightPx]   = useState(SHEET_PEEK_PX);
   const [snapPoint, setSnapPoint]           = useState<SnapPoint>("peek");
+  const [isRefreshing, setIsRefreshing]     = useState(false);
+
+  function handleRefresh() {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }
 
   // All refs declared together before any useEffect
   const sheetRef         = useRef<HTMLDivElement>(null);
@@ -308,30 +347,41 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
   const isDragging       = useRef(false);
   const touchInList      = useRef(false);
 
-  // Non-passive touchmove so we can preventDefault during sheet drag.
-  // Only blocks scroll when drag originated outside the list.
   useEffect(() => {
     const el = sheetRef.current;
     if (!el) return;
     const onMove = (e: TouchEvent) => {
       if (touchStartY.current === null) return;
-      const delta = touchStartY.current - e.touches[0].clientY; // positive = up
 
-      // If touch started in list at top and user drags DOWN, hijack into sheet drag
+      // Handle list boundary hijacking
       if (touchInList.current && !isDragging.current) {
-        if (delta < -6 && (listRef.current?.scrollTop ?? 0) <= 2) {
-          isDragging.current = true;
-          touchInList.current = false; // treat as sheet drag from here
+        const listEl = listRef.current;
+        const atTop    = (listEl?.scrollTop ?? 0) <= 2;
+        const atBottom = listEl ? listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 2 : false;
+        const dy = touchStartY.current - e.touches[0].clientY;
+
+        if (atTop && dy < -8) {
+          isDragging.current  = true;
+          touchInList.current = false;
+          touchStartY.current = e.touches[0].clientY;
+          touchStartH.current = currentHeightRef.current;
+        } else if (atBottom && dy > 8 && currentHeightRef.current < SHEET_FULL_PX - 10) {
+          isDragging.current  = true;
+          touchInList.current = false;
+          touchStartY.current = e.touches[0].clientY;
+          touchStartH.current = currentHeightRef.current;
         } else {
-          return; // let native scroll handle it
+          return; // let native list scroll work
         }
       }
 
       if (!isDragging.current) return;
-      const next = Math.min(SHEET_FULL_PX, Math.max(SHEET_COLLAPSED_PX, touchStartH.current + delta));
+
+      const dy   = touchStartY.current - e.touches[0].clientY;
+      const next = Math.min(SHEET_FULL_PX, Math.max(SHEET_COLLAPSED_PX, touchStartH.current + dy));
       currentHeightRef.current = next;
       setSheetHeightPx(next);
-      e.preventDefault();
+      e.preventDefault(); // only called when isDragging=true and not in list
     };
     el.addEventListener("touchmove", onMove, { passive: false });
     return () => el.removeEventListener("touchmove", onMove);
@@ -364,27 +414,17 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
   }
 
   function onTouchStart(e: React.TouchEvent) {
-    // Record whether touch started inside the scrollable list
-    touchInList.current = listRef.current?.contains(e.target as Node) ?? false;
-    if (touchInList.current) {
-      // If list is at top, allow sheet drag on downward swipe
-      if ((listRef.current?.scrollTop ?? 0) <= 2) {
-        touchStartY.current = e.touches[0].clientY;
-        touchStartH.current = currentHeightRef.current;
-        // Don't set isDragging yet — wait for direction in touchmove
-      }
-      return;
-    }
     touchStartY.current = e.touches[0].clientY;
     touchStartH.current = currentHeightRef.current;
-    isDragging.current = true;
+    touchInList.current = listRef.current?.contains(e.target as Node) ?? false;
+    isDragging.current  = !touchInList.current;
   }
 
   function onTouchEnd(e: React.TouchEvent) {
     if (!isDragging.current) return;
-    isDragging.current = false;
+    isDragging.current  = false;
     touchInList.current = false;
-    const dragDelta = currentHeightRef.current - touchStartH.current; // positive = dragged up
+    const dragDelta = currentHeightRef.current - touchStartH.current;
     const THRESHOLD = 40;
     const idx = SNAP_POINTS.indexOf(snapPoint);
     if (dragDelta > THRESHOLD && idx < SNAP_POINTS.length - 1) {
@@ -404,6 +444,8 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
     showFilters, onToggleFilters: () => setShowFilters((p) => !p),
     workers: filteredWorkers,
     onWorkerClick: (id: number) => navigate(`/app/worker/${id}`),
+    isRefreshing,
+    onRefresh: handleRefresh,
   };
 
   return (
@@ -451,69 +493,100 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
               <p className="text-sm font-bold">Find Workers</p>
               <p className="text-xs text-muted-foreground">{filteredWorkers.length} nearby</p>
             </div>
-            <button
-              onTouchEnd={(e) => { e.stopPropagation(); const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
-              onClick={() => { const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
-              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
-            >
-              <ChevronUp className={`w-4 h-4 transition-transform duration-300 ${snapPoint === "full" ? "rotate-180" : ""}`} />
-            </button>
-          </div>
-
-          {/* Search */}
-          <div className="shrink-0 px-4 pb-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or skill..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow placeholder:text-muted-foreground"
-              />
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => { setSearch(""); setSelectedSkills([]); setMaxDist(null); setVerifiedOnly(true); handleRefresh(); }}
+                disabled={isRefreshing}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                title="Refresh"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
+                onClick={(e) => { e.stopPropagation(); const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
+                className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
+              >
+                <ChevronUp className={`w-4 h-4 transition-transform duration-300 ${snapPoint === "full" ? "rotate-180" : ""}`} />
+              </button>
             </div>
           </div>
 
-          {/* Skill chips — always visible */}
+          {/* Search + filter toggle */}
           <div className="shrink-0 px-4 pb-3 border-b border-border space-y-2">
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-              {SKILL_FILTERS.map((s) => {
-                const active = selectedSkills.includes(s);
-                return (
-                  <button
-                    key={s}
-                    onClick={() => toggleSkill(s)}
-                    className={`px-3 py-1 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
-                      active ? "text-white border-transparent" : "border-border text-muted-foreground"
-                    }`}
-                    style={active ? { background: A } : {}}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name or skill..."
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow placeholder:text-muted-foreground"
+                />
+              </div>
+              <button
+                onClick={() => setShowFilters((p) => !p)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-colors ${
+                  showFilters
+                    ? "text-white border-transparent"
+                    : "border-border text-muted-foreground bg-input-background"
+                }`}
+                style={showFilters ? { background: A } : {}}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                Filters
+              </button>
             </div>
 
-            {/* Distance + Available Only — only when fully expanded */}
-            {snapPoint === "full" && (
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Distance:</span>
-                  {DISTANCE_FILTERS.map((d) => {
-                    const active = maxDist === d;
-                    return (
-                      <button
-                        key={d}
-                        onClick={() => setMaxDist(active ? null : d)}
-                        className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
-                          active ? "text-white border-transparent" : "border-border text-muted-foreground"
-                        }`}
-                        style={active ? { background: A } : {}}
-                      >
-                        {d} km
-                      </button>
-                    );
-                  })}
+            {/* Expanded filters — same layout as desktop */}
+            {showFilters && (
+              <div className="space-y-3 pt-1">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Skill</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {SKILL_FILTERS.map((s) => {
+                      const active = selectedSkills.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => toggleSkill(s)}
+                          className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                            active
+                              ? "text-white border-transparent"
+                              : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600"
+                          }`}
+                          style={active ? { background: A } : {}}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Distance</p>
+                  <div className="flex gap-1.5">
+                    {DISTANCE_FILTERS.map((d) => {
+                      const active = maxDist === d;
+                      return (
+                        <button
+                          key={d}
+                          onClick={() => setMaxDist(active ? null : d)}
+                          className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                            active
+                              ? "text-white border-transparent"
+                              : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600"
+                          }`}
+                          style={active ? { background: A } : {}}
+                        >
+                          {d} km
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Available Only</span>
                   <button
@@ -531,7 +604,9 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
 
           {/* Worker list — scrollable, ref used to detect scroll position for drag guard */}
           <div ref={listRef} className="flex-1 overflow-y-auto px-3 pt-2 pb-2 space-y-2">
-            {filteredWorkers.map((w) => (
+            {isRefreshing
+              ? Array.from({ length: 3 }).map((_, i) => <WorkerCardSkeleton key={i} />)
+              : filteredWorkers.map((w) => (
               <button
                 key={w.id}
                 onClick={() => navigate(`/app/worker/${w.id}`)}
@@ -576,7 +651,7 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
               </button>
             ))}
 
-            {filteredWorkers.length === 0 && (
+            {!isRefreshing && filteredWorkers.length === 0 && (
               <div className="text-center py-10 text-muted-foreground">
                 <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm font-medium">No workers found</p>
