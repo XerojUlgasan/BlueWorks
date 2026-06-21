@@ -1,13 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Search, Star, MapPin, CheckCircle, SlidersHorizontal, ChevronDown, Users, ChevronUp } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { CustomerNav } from "../../components/shared/Nav";
 import { A, WORKERS } from "../../constants";
 
-// Fix default marker icons broken by Vite's asset handling
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -20,13 +19,25 @@ L.Icon.Default.mergeOptions({
 });
 
 const AVAILABILITY_STYLES: Record<string, string> = {
-  Today:       "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20",
-  Tomorrow:    "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20",
-  Unavailable: "text-red-500 bg-red-50 dark:bg-red-900/20",
+  Today:       "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30",
+  Tomorrow:    "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30",
+  Unavailable: "text-red-500 bg-red-50 dark:bg-red-900/30",
 };
 
-// Fairview, QC center — matches the app's fictional location context
+const SKILL_FILTERS = ["Plumber", "Electrician", "Mason", "Carpenter", "Painter"] as const;
+const DISTANCE_FILTERS = [1, 3, 5] as const;
+
 const MAP_CENTER: [number, number] = [14.7160, 121.0630];
+
+const SHEET_COLLAPSED_PX = 68;  // just handle + header row
+const SHEET_PEEK_PX      = 240; // search + chips + ~1 card
+const SHEET_MID_PX       = 700; // ~3-4 cards visible
+const SHEET_FULL_PX      = typeof window !== "undefined"
+  ? window.innerHeight - 57 - 56
+  : 620;
+
+const SNAP_POINTS = ["collapsed", "peek", "mid", "full"] as const;
+type SnapPoint = typeof SNAP_POINTS[number];
 
 function workerInitials(name: string) {
   return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
@@ -38,13 +49,7 @@ function createWorkerIcon(color: string) {
       <circle cx="18" cy="18" r="16" fill="${color}" stroke="white" stroke-width="2.5"/>
       <polygon points="13,32 23,32 18,42" fill="${color}"/>
     </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: "",
-    iconSize: [36, 44],
-    iconAnchor: [18, 42],
-    popupAnchor: [0, -44],
-  });
+  return L.divIcon({ html: svg, className: "", iconSize: [36, 44], iconAnchor: [18, 42], popupAnchor: [0, -44] });
 }
 
 const userIcon = L.divIcon({
@@ -54,22 +59,16 @@ const userIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-// Forces map to recalculate size when the container becomes visible
-function MapResizer({ visible }: { visible: boolean }) {
+function MapResizer() {
   const map = useMap();
   useEffect(() => {
-    if (visible) setTimeout(() => map.invalidateSize(), 50);
-  }, [visible, map]);
+    setTimeout(() => map.invalidateSize(), 80);
+  }, [map]);
   return null;
 }
 
-function WorkerMap({ onSelectWorker, visible }: { onSelectWorker: (id: number) => void; visible: boolean }) {
-  // Philippines bounding box — prevents panning outside the country
-  const philippinesBounds: L.LatLngBoundsExpression = [
-    [4.5, 116.0],
-    [21.5, 127.0],
-  ];
-
+function WorkerMap({ onSelectWorker }: { onSelectWorker: (id: number) => void }) {
+  const philippinesBounds: L.LatLngBoundsExpression = [[4.5, 116.0], [21.5, 127.0]];
   return (
     <MapContainer
       center={MAP_CENTER}
@@ -80,20 +79,12 @@ function WorkerMap({ onSelectWorker, visible }: { onSelectWorker: (id: number) =
       style={{ width: "100%", height: "100%" }}
       zoomControl={false}
     >
-      <TileLayer
-        attribution=""
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <MapResizer visible={visible} />
-
-      {/* User location marker */}
+      <TileLayer attribution="" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <MapResizer />
       <Marker position={MAP_CENTER} icon={userIcon}>
         <Popup>You are here</Popup>
       </Marker>
-
-      {/* Worker markers */}
       {WORKERS.map((w) => {
-        // Spread workers around the center using their mx/my as relative offsets
         const lat = MAP_CENTER[0] + (w.my - 270) * -0.0003;
         const lng = MAP_CENTER[1] + (w.mx - 320) *  0.0004;
         return (
@@ -123,14 +114,228 @@ function WorkerMap({ onSelectWorker, visible }: { onSelectWorker: (id: number) =
   );
 }
 
+// ─── Desktop panel (filter header + worker list) ───────────────────────────────
+
+interface PanelContentProps {
+  search: string;
+  onSearch: (v: string) => void;
+  selectedSkills: string[];
+  onToggleSkill: (s: string) => void;
+  maxDist: number | null;
+  onSetMaxDist: (d: number | null) => void;
+  verifiedOnly: boolean;
+  onToggleVerified: () => void;
+  showFilters: boolean;
+  onToggleFilters: () => void;
+  workers: typeof WORKERS;
+  onWorkerClick: (id: number) => void;
+}
+
+function PanelContent({
+  search, onSearch, selectedSkills, onToggleSkill,
+  maxDist, onSetMaxDist, verifiedOnly, onToggleVerified,
+  showFilters, onToggleFilters, workers, onWorkerClick,
+}: PanelContentProps) {
+  return (
+    <>
+      <div className="px-4 pt-4 pb-3 border-b border-border shrink-0 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold">Find Workers</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {workers.length} worker{workers.length !== 1 ? "s" : ""} found nearby
+            </p>
+          </div>
+          <button
+            onClick={onToggleFilters}
+            className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filters
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search by name or skill..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow placeholder:text-muted-foreground"
+          />
+        </div>
+
+        {showFilters && (
+          <div className="space-y-3 pt-1">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Skill</p>
+              <div className="flex flex-wrap gap-1.5">
+                {SKILL_FILTERS.map((s) => {
+                  const active = selectedSkills.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => onToggleSkill(s)}
+                      className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        active
+                          ? "text-white border-transparent"
+                          : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      }`}
+                      style={active ? { background: A } : {}}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Distance</p>
+              <div className="flex gap-1.5">
+                {DISTANCE_FILTERS.map((d) => {
+                  const active = maxDist === d;
+                  return (
+                    <button
+                      key={d}
+                      onClick={() => onSetMaxDist(active ? null : d)}
+                      className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
+                        active
+                          ? "text-white border-transparent"
+                          : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
+                      }`}
+                      style={active ? { background: A } : {}}
+                    >
+                      {d} km
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Available Only</span>
+              <button
+                onClick={onToggleVerified}
+                className="w-10 h-5 rounded-full relative transition-colors shrink-0"
+                style={{ background: verifiedOnly ? A : "#CBD5E1" }}
+                aria-pressed={verifiedOnly}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${verifiedOnly ? "right-0.5" : "left-0.5"}`} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {workers.map((w) => (
+          <button
+            key={w.id}
+            onClick={() => onWorkerClick(w.id)}
+            className="w-full text-left bg-background dark:bg-white/5 rounded-2xl border border-border p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-start gap-3">
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                style={{ background: w.color }}
+              >
+                {workerInitials(w.name)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="font-semibold text-sm truncate">{w.name}</p>
+                  {w.status !== "Unavailable" && <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{w.skill}</p>
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  <span className="flex items-center gap-0.5 text-xs font-medium">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-400" />{w.rating}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                    <MapPin className="w-3 h-3" />{w.dist}
+                  </span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[w.status] ?? ""}`}>
+                    {w.status}
+                  </span>
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onWorkerClick(w.id); }}
+              className="mt-3 w-full py-2 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+              style={{ background: A }}
+            >
+              View Profile
+            </button>
+          </button>
+        ))}
+
+        {workers.length === 0 && (
+          <div className="text-center py-16 text-muted-foreground">
+            <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium">No workers found</p>
+            <p className="text-xs mt-1">Try adjusting your filters</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
 export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; toggleDark: () => void }) {
   const navigate = useNavigate();
-  const [search, setSearch]           = useState("");
-  const [verifiedOnly, setVerifiedOnly] = useState(true);
-  const [showFilters, setShowFilters] = useState(true);
-  const [mobileView, setMobileView]   = useState<"list" | "map">("list");
+  const [search, setSearch]                 = useState("");
+  const [verifiedOnly, setVerifiedOnly]     = useState(true);
+  const [showFilters, setShowFilters]       = useState(true);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [maxDist, setMaxDist]               = useState<number | null>(null);
+  const [sheetHeightPx, setSheetHeightPx]   = useState(SHEET_PEEK_PX);
+  const [snapPoint, setSnapPoint]           = useState<SnapPoint>("peek");
+
+  // All refs declared together before any useEffect
+  const sheetRef         = useRef<HTMLDivElement>(null);
+  const listRef          = useRef<HTMLDivElement>(null);
+  const touchStartY      = useRef<number | null>(null);
+  const touchStartH      = useRef<number>(SHEET_PEEK_PX);
+  const currentHeightRef = useRef<number>(SHEET_PEEK_PX);
+  const isDragging       = useRef(false);
+  const touchInList      = useRef(false);
+
+  // Non-passive touchmove so we can preventDefault during sheet drag.
+  // Only blocks scroll when drag originated outside the list.
+  useEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    const onMove = (e: TouchEvent) => {
+      if (touchStartY.current === null) return;
+      const delta = touchStartY.current - e.touches[0].clientY; // positive = up
+
+      // If touch started in list at top and user drags DOWN, hijack into sheet drag
+      if (touchInList.current && !isDragging.current) {
+        if (delta < -6 && (listRef.current?.scrollTop ?? 0) <= 2) {
+          isDragging.current = true;
+          touchInList.current = false; // treat as sheet drag from here
+        } else {
+          return; // let native scroll handle it
+        }
+      }
+
+      if (!isDragging.current) return;
+      const next = Math.min(SHEET_FULL_PX, Math.max(SHEET_COLLAPSED_PX, touchStartH.current + delta));
+      currentHeightRef.current = next;
+      setSheetHeightPx(next);
+      e.preventDefault();
+    };
+    el.addEventListener("touchmove", onMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onMove);
+  }, []);
 
   const filteredWorkers = WORKERS.filter((w) => {
     if (search && !w.name.toLowerCase().includes(search.toLowerCase()) && !w.skill.toLowerCase().includes(search.toLowerCase())) return false;
@@ -146,98 +351,176 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
     );
   }
 
+  function snapSheet(point: SnapPoint) {
+    const heights: Record<SnapPoint, number> = {
+      collapsed: SHEET_COLLAPSED_PX,
+      peek:      SHEET_PEEK_PX,
+      mid:       SHEET_MID_PX,
+      full:      SHEET_FULL_PX,
+    };
+    setSnapPoint(point);
+    setSheetHeightPx(heights[point]);
+    currentHeightRef.current = heights[point];
+  }
+
+  function onTouchStart(e: React.TouchEvent) {
+    // Record whether touch started inside the scrollable list
+    touchInList.current = listRef.current?.contains(e.target as Node) ?? false;
+    if (touchInList.current) {
+      // If list is at top, allow sheet drag on downward swipe
+      if ((listRef.current?.scrollTop ?? 0) <= 2) {
+        touchStartY.current = e.touches[0].clientY;
+        touchStartH.current = currentHeightRef.current;
+        // Don't set isDragging yet — wait for direction in touchmove
+      }
+      return;
+    }
+    touchStartY.current = e.touches[0].clientY;
+    touchStartH.current = currentHeightRef.current;
+    isDragging.current = true;
+  }
+
+  function onTouchEnd(e: React.TouchEvent) {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    touchInList.current = false;
+    const dragDelta = currentHeightRef.current - touchStartH.current; // positive = dragged up
+    const THRESHOLD = 40;
+    const idx = SNAP_POINTS.indexOf(snapPoint);
+    if (dragDelta > THRESHOLD && idx < SNAP_POINTS.length - 1) {
+      snapSheet(SNAP_POINTS[idx + 1]);
+    } else if (dragDelta < -THRESHOLD && idx > 0) {
+      snapSheet(SNAP_POINTS[idx - 1]);
+    } else {
+      snapSheet(snapPoint);
+    }
+  }
+
+  const panelProps = {
+    search, onSearch: setSearch,
+    selectedSkills, onToggleSkill: toggleSkill,
+    maxDist, onSetMaxDist: setMaxDist,
+    verifiedOnly, onToggleVerified: () => setVerifiedOnly((p) => !p),
+    showFilters, onToggleFilters: () => setShowFilters((p) => !p),
+    workers: filteredWorkers,
+    onWorkerClick: (id: number) => navigate(`/app/worker/${id}`),
+  };
+
   return (
     <div className="flex flex-col bg-background" style={{ height: "100dvh" }}>
       <CustomerNav dark={dark} toggleDark={toggleDark} />
 
-      {/* Mobile view toggle */}
-      <div className="md:hidden flex gap-1 p-2 border-b border-border bg-card shrink-0">
-        {(["list", "map"] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setMobileView(v)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${mobileView === v ? "text-white" : "text-muted-foreground bg-muted"}`}
-            style={mobileView === v ? { background: A } : {}}
-          >
-            {v}
-          </button>
-        ))}
+      {/* ── Desktop layout: side panel + map ── */}
+      <div className="hidden md:flex flex-1 overflow-hidden">
+        <aside className="w-96 shrink-0 flex flex-col border-r border-border overflow-hidden bg-card dark:bg-slate-900 dark:shadow-[inset_-1px_0_0_rgba(255,255,255,0.06)]">
+          <PanelContent {...panelProps} />
+        </aside>
+        <div className="flex-1 h-full">
+          <WorkerMap onSelectWorker={(id) => navigate(`/app/worker/${id}`)} />
+        </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      {/* ── Mobile layout: full-screen map + bottom sheet ── */}
+      <div className="md:hidden flex-1 relative overflow-hidden">
 
-        {/* Left panel */}
-        <aside className={`${mobileView === "map" ? "hidden" : "flex"} md:flex w-full md:w-96 shrink-0 flex-col border-r border-border bg-card overflow-hidden`}>
+        {/* Map — fixed so it fills the screen regardless of outer wrapper height */}
+        <div className="fixed inset-0 top-[57px]">
+          <WorkerMap onSelectWorker={(id) => navigate(`/app/worker/${id}`)} />
+        </div>
 
-          {/* Search + filters */}
-          <div className="p-4 border-b border-border space-y-3 shrink-0">
+        {/* Bottom sheet — fixed above the tab bar (56px), capped so it never overlaps the nav */}
+        <div
+          ref={sheetRef}
+          className="fixed left-0 right-0 bottom-14 flex flex-col rounded-t-2xl bg-card dark:bg-slate-900 shadow-[0_-8px_32px_rgba(0,0,0,0.18)] dark:shadow-[0_-8px_40px_rgba(0,0,0,0.55)] z-10"
+          style={{
+            height: sheetHeightPx,
+            maxHeight: "calc(100dvh - 57px - 56px)",
+            transition: isDragging.current ? "none" : "height 0.28s cubic-bezier(0.32,0.72,0,1)",
+          }}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          {/* Pill handle */}
+          <div className="shrink-0 flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 rounded-full bg-border" />
+          </div>
+
+          {/* Header */}
+          <div className="shrink-0 flex items-center justify-between px-4 pb-2">
+            <div>
+              <p className="text-sm font-bold">Find Workers</p>
+              <p className="text-xs text-muted-foreground">{filteredWorkers.length} nearby</p>
+            </div>
+            <button
+              onTouchEnd={(e) => { e.stopPropagation(); const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
+              onClick={() => { const idx = SNAP_POINTS.indexOf(snapPoint); snapSheet(snapPoint === "full" ? "peek" : SNAP_POINTS[Math.min(idx + 1, SNAP_POINTS.length - 1)]); }}
+              className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground"
+            >
+              <ChevronUp className={`w-4 h-4 transition-transform duration-300 ${snapPoint === "full" ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="shrink-0 px-4 pb-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or skill..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition-shadow placeholder:text-muted-foreground"
               />
             </div>
+          </div>
 
-            <button
-              onClick={() => setShowFilters((p) => !p)}
-              className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              Filters
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showFilters ? "rotate-180" : ""}`} />
-            </button>
+          {/* Skill chips — always visible */}
+          <div className="shrink-0 px-4 pb-3 border-b border-border space-y-2">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
+              {SKILL_FILTERS.map((s) => {
+                const active = selectedSkills.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleSkill(s)}
+                    className={`px-3 py-1 rounded-full border text-xs font-medium whitespace-nowrap shrink-0 transition-colors ${
+                      active ? "text-white border-transparent" : "border-border text-muted-foreground"
+                    }`}
+                    style={active ? { background: A } : {}}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
 
-            {showFilters && (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Skill</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {["Plumber", "Electrician", "Mason", "Carpenter", "Painter"].map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => toggleSkill(s)}
-                        className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
-                          selectedSkills.includes(s)
-                            ? "text-white border-transparent"
-                            : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
-                        }`}
-                        style={selectedSkills.includes(s) ? { background: A } : {}}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Distance</p>
-                  <div className="flex gap-1.5">
-                    {[1, 3, 5].map((d) => (
+            {/* Distance + Available Only — only when fully expanded */}
+            {snapPoint === "full" && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Distance:</span>
+                  {DISTANCE_FILTERS.map((d) => {
+                    const active = maxDist === d;
+                    return (
                       <button
                         key={d}
-                        onClick={() => setMaxDist((prev) => prev === d ? null : d)}
+                        onClick={() => setMaxDist(active ? null : d)}
                         className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-colors ${
-                          maxDist === d
-                            ? "text-white border-transparent"
-                            : "border-border text-muted-foreground hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-400"
+                          active ? "text-white border-transparent" : "border-border text-muted-foreground"
                         }`}
-                        style={maxDist === d ? { background: A } : {}}
+                        style={active ? { background: A } : {}}
                       >
                         {d} km
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Available Only</span>
                   <button
                     onClick={() => setVerifiedOnly((p) => !p)}
                     className="w-10 h-5 rounded-full relative transition-colors shrink-0"
                     style={{ background: verifiedOnly ? A : "#CBD5E1" }}
+                    aria-pressed={verifiedOnly}
                   >
                     <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${verifiedOnly ? "right-0.5" : "left-0.5"}`} />
                   </button>
@@ -246,61 +529,60 @@ export default function WorkerDiscovery({ dark, toggleDark }: { dark: boolean; t
             )}
           </div>
 
-          {/* Worker list */}
-          <div className="flex-1 overflow-y-auto p-3 pb-20 md:pb-3 space-y-2">
-            <p className="text-xs text-muted-foreground px-1">{filteredWorkers.length} workers found nearby</p>
+          {/* Worker list — scrollable, ref used to detect scroll position for drag guard */}
+          <div ref={listRef} className="flex-1 overflow-y-auto px-3 pt-2 pb-2 space-y-2">
             {filteredWorkers.map((w) => (
-              <div
+              <button
                 key={w.id}
                 onClick={() => navigate(`/app/worker/${w.id}`)}
-                className="bg-background rounded-xl border border-border p-3.5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all cursor-pointer"
+                className="w-full text-left bg-background dark:bg-white/5 rounded-2xl border border-border p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all group"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0" style={{ background: w.color }}>
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm"
+                    style={{ background: w.color }}
+                  >
                     {workerInitials(w.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="font-semibold text-sm">{w.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-semibold text-sm truncate">{w.name}</p>
                       {w.status !== "Unavailable" && <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">{w.skill}</p>
                     <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                       <span className="flex items-center gap-0.5 text-xs font-medium">
-                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {w.rating}
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />{w.rating}
                       </span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <MapPin className="w-3 h-3" /> {w.dist}
+                      <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                        <MapPin className="w-3 h-3" />{w.dist}
                       </span>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${AVAILABILITY_STYLES[w.status] ?? ""}`}>
                         {w.status}
                       </span>
                     </div>
                   </div>
+                  <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+                  </svg>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); navigate(`/app/worker/${w.id}`); }}
-                  className="w-full mt-3 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="mt-3 w-full py-2 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-opacity"
                   style={{ background: A }}
                 >
                   View Profile
                 </button>
-              </div>
+              </button>
             ))}
 
             {filteredWorkers.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-10 text-muted-foreground">
+                <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm font-medium">No workers found</p>
                 <p className="text-xs mt-1">Try adjusting your filters</p>
               </div>
             )}
-          </div>
-        </aside>
-
-        {/* Map — always mounted so Leaflet stays initialised; visibility toggled via CSS only */}
-        <div className={`${mobileView === "list" ? "hidden" : "flex"} md:flex flex-1 relative flex-col`}>
-          <div className="flex-1 pb-16 md:pb-0">
-            <WorkerMap onSelectWorker={(id) => navigate(`/app/worker/${id}`)} visible={mobileView === "map"} />
           </div>
         </div>
       </div>
