@@ -18,10 +18,22 @@ export default function WorkerLogin() {
     const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) { setError(err.message); return; }
-    console.log("JWT token:", data.session?.access_token);
     const role = data.user?.user_metadata?.role;
-    if (role === "customer") { navigate("/app/home"); }
-    else { navigate("/worker/dashboard"); }
+    if (role === "customer") {
+      navigate("/app/home");
+      return;
+    }
+    // Worker: check if onboarding is complete
+    const { data: workerRow } = await supabase
+      .from("workers")
+      .select("onboarding_complete")
+      .eq("id", data.user.id)
+      .maybeSingle();
+    if (!workerRow || !workerRow.onboarding_complete) {
+      navigate("/worker/onboarding");
+    } else {
+      navigate("/worker/dashboard");
+    }
   }
 
   return (

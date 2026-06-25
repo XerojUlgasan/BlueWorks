@@ -43,9 +43,45 @@ export const BARANGAYS = [
   "Bagong Silangan", "Holy Spirit", "Payatas", "Matandang Balara", "Tandang Sora",
 ];
 
+// Barangay approximate center coordinates (Quezon City)
+export const BARANGAY_COORDS: Record<string, { lat: number; lng: number }> = {
+  "Fairview":           { lat: 14.7325, lng: 121.0588 },
+  "Novaliches":         { lat: 14.7294, lng: 121.0448 },
+  "Batasan Hills":      { lat: 14.6870, lng: 121.0980 },
+  "Lagro":              { lat: 14.7176, lng: 121.0490 },
+  "Commonwealth":       { lat: 14.7028, lng: 121.0882 },
+  "Bagong Silangan":    { lat: 14.6944, lng: 121.1046 },
+  "Holy Spirit":        { lat: 14.6985, lng: 121.0818 },
+  "Payatas":            { lat: 14.7055, lng: 121.1058 },
+  "Matandang Balara":   { lat: 14.6764, lng: 121.0682 },
+  "Tandang Sora":       { lat: 14.6899, lng: 121.0448 },
+};
+
 export const SKILLS_LIST = [
   "Electrician", "Plumber", "Carpenter", "Painter", "Mason", "Welder", "Aircon Technician",
 ];
+
+export const JOB_CATEGORIES = [
+  { id: "electrician",      label: "Electrician",       icon: "⚡", desc: "Wiring, panels, outlets, lighting" },
+  { id: "plumber",          label: "Plumber",           icon: "🔧", desc: "Pipes, leaks, drainage, fixtures"  },
+  { id: "carpenter",        label: "Carpenter",         icon: "🪚", desc: "Furniture, doors, partitions"      },
+  { id: "painter",          label: "Painter",           icon: "🖌️", desc: "Interior & exterior painting"     },
+  { id: "mason",            label: "Mason",             icon: "🧱", desc: "Concrete, tiles, stonework"        },
+  { id: "welder",           label: "Welder",            icon: "🔥", desc: "Metal fabrication & welding"       },
+  { id: "aircon_tech",      label: "Aircon Technician", icon: "❄️", desc: "Installation, cleaning, repair"   },
+  { id: "general_handyman", label: "General Handyman",  icon: "🛠️", desc: "Mixed repairs & maintenance"     },
+];
+
+export const SECONDARY_SKILLS: Record<string, string[]> = {
+  electrician:      ["Rewiring", "Panel Upgrade", "Lighting Install", "Outlet Repair", "Aircon Wiring", "CCTV Install"],
+  plumber:          ["Pipe Repair", "Drainage", "Water Heater", "Faucet Fix", "Bathroom Install", "Tank Repair"],
+  carpenter:        ["Cabinet Making", "Door Install", "Flooring", "Framing", "Furniture Repair", "Partition"],
+  painter:          ["Wall Painting", "Ceiling Paint", "Epoxy Coat", "Varnish", "Waterproofing", "Texture Paint"],
+  mason:            ["Tile Setting", "Concrete Work", "Plastering", "Brick Laying", "Waterproofing", "Flooring"],
+  welder:           ["Arc Welding", "TIG Welding", "Metal Cutting", "Gate Fabrication", "Steel Railing", "Grille"],
+  aircon_tech:      ["AC Install", "AC Cleaning", "Refrigerant Recharge", "AC Repair", "Ventilation", "Exhaust Fan"],
+  general_handyman: ["Minor Repairs", "Furniture Assembly", "Painting", "Plumbing Fix", "Electrical Fix", "Cleaning"],
+};
 
 export const WORKERS = [
   { id: 1, name: "Juan dela Cruz",  skill: "Electrician", rating: 4.9, dist: "0.8 km", status: "Today",       color: "#3B82F6", mx: 270, my: 258 },

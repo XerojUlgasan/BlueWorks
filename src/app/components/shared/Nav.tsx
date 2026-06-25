@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Bell, Home, Briefcase, Calendar, MessageCircle, User, DollarSign, LogOut, Wrench, Users, BarChart2, Settings, AlertTriangle, Bot } from "lucide-react";
+import { Bell, Home, Briefcase, Calendar, MessageCircle, User, DollarSign, LogOut, Wrench, Users, BarChart2, Settings, AlertTriangle, Bot, SlidersHorizontal } from "lucide-react";
 import { Logo, DarkToggle } from "./index";
 import { A, P } from "../../constants";
 import { initials } from "./index";
@@ -202,12 +202,13 @@ export function WorkerSidebar() {
   const { user } = useCurrentUser();
 
   const items = [
-    { icon: <Home className="w-5 h-5" />,         label: "Dashboard", path: "/worker/dashboard" },
-    { icon: <Briefcase className="w-5 h-5" />,     label: "My Jobs",   path: "/worker/jobs"      },
-    { icon: <Calendar className="w-5 h-5" />,      label: "Schedule",  path: "/worker/schedule"  },
-    { icon: <MessageCircle className="w-5 h-5" />, label: "Messages",  path: "/worker/messages"  },
-    { icon: <User className="w-5 h-5" />,          label: "My Profile",path: "/worker/profile"   },
-    { icon: <DollarSign className="w-5 h-5" />,    label: "Earnings",  path: "/worker/earnings"  },
+    { icon: <Home className="w-5 h-5" />,              label: "Dashboard", path: "/worker/dashboard" },
+    { icon: <Briefcase className="w-5 h-5" />,         label: "My Jobs",   path: "/worker/jobs"      },
+    { icon: <Calendar className="w-5 h-5" />,          label: "Schedule",  path: "/worker/schedule"  },
+    { icon: <MessageCircle className="w-5 h-5" />,     label: "Messages",  path: "/worker/messages"  },
+    { icon: <User className="w-5 h-5" />,              label: "My Profile",path: "/worker/profile"   },
+    { icon: <DollarSign className="w-5 h-5" />,        label: "Earnings",  path: "/worker/earnings"  },
+    { icon: <SlidersHorizontal className="w-5 h-5" />, label: "Settings",  path: "/worker/settings"  },
   ];
 
   const userInitials = user?.fullname ? user.fullname.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
